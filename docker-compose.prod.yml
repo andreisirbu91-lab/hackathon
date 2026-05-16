@@ -1,0 +1,81 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: hackaton-redis
+    restart: unless-stopped
+    networks: [coolify]
+
+  browser:
+    image: ghcr.io/andreisirbu91-lab/hackathon-browser:latest
+    container_name: hackaton-browser
+    restart: unless-stopped
+    shm_size: 2gb
+    networks: [coolify]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.middlewares.gzip.compress=true"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      - "traefik.http.routers.http-hackaton-browser.entryPoints=http"
+      - "traefik.http.routers.http-hackaton-browser.rule=Host(`browser.hack.rzs-it.ro`) && PathPrefix(`/`)"
+      - "traefik.http.routers.http-hackaton-browser.middlewares=redirect-to-https"
+      - "traefik.http.routers.http-hackaton-browser.service=http-hackaton-browser"
+      - "traefik.http.routers.https-hackaton-browser.entryPoints=https"
+      - "traefik.http.routers.https-hackaton-browser.rule=Host(`browser.hack.rzs-it.ro`) && PathPrefix(`/`)"
+      - "traefik.http.routers.https-hackaton-browser.middlewares=gzip"
+      - "traefik.http.routers.https-hackaton-browser.service=https-hackaton-browser"
+      - "traefik.http.routers.https-hackaton-browser.tls=true"
+      - "traefik.http.routers.https-hackaton-browser.tls.certresolver=letsencrypt"
+      - "traefik.http.services.http-hackaton-browser.loadbalancer.server.port=6080"
+      - "traefik.http.services.https-hackaton-browser.loadbalancer.server.port=6080"
+
+  mcp:
+    image: ghcr.io/andreisirbu91-lab/hackathon-mcp:latest
+    container_name: hackaton-mcp
+    restart: unless-stopped
+    depends_on: [redis, browser]
+    networks: [coolify]
+    environment:
+      PORT: 3001
+      REDIS_URL: redis://hackaton-redis:6379
+      BROWSER_PLAYWRIGHT_WS: ws://hackaton-browser:3002
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL:-}
+
+  web:
+    image: ghcr.io/andreisirbu91-lab/hackathon-web:latest
+    container_name: hackaton-web
+    restart: unless-stopped
+    depends_on: [redis, mcp]
+    networks: [coolify]
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      ANTHROPIC_FALLBACK_MODEL: ${ANTHROPIC_FALLBACK_MODEL:-claude-opus-4-7}
+      REDIS_URL: redis://hackaton-redis:6379
+      MCP_SERVER_URL: http://hackaton-mcp:3001/mcp
+      NEXT_PUBLIC_BROWSER_VNC_URL: ${NEXT_PUBLIC_BROWSER_VNC_URL:-https://browser.hack.rzs-it.ro/vnc.html}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hack A Ton 2026}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.middlewares.gzip.compress=true"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      - "traefik.http.routers.http-hackaton-web.entryPoints=http"
+      - "traefik.http.routers.http-hackaton-web.rule=Host(`hack.rzs-it.ro`) && PathPrefix(`/`)"
+      - "traefik.http.routers.http-hackaton-web.middlewares=redirect-to-https"
+      - "traefik.http.routers.http-hackaton-web.service=http-hackaton-web"
+      - "traefik.http.routers.https-hackaton-web.entryPoints=https"
+      - "traefik.http.routers.https-hackaton-web.rule=Host(`hack.rzs-it.ro`) && PathPrefix(`/`)"
+      - "traefik.http.routers.https-hackaton-web.middlewares=gzip"
+      - "traefik.http.routers.https-hackaton-web.service=https-hackaton-web"
+      - "traefik.http.routers.https-hackaton-web.tls=true"
+      - "traefik.http.routers.https-hackaton-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.http-hackaton-web.loadbalancer.server.port=3000"
+      - "traefik.http.services.https-hackaton-web.loadbalancer.server.port=3000"
+
+networks:
+  coolify:
+    external: true
