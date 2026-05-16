@@ -1,43 +1,43 @@
 # hackaton-stack
 
-> Agentic AI demo platform for **Hack A Ton 2026**. Chat with an Anthropic-powered agent on the left, watch it act in real time on the right: a real headed Chromium that the audience sees navigate live, generative UI artifacts (charts, tables, kanban, maps), and a tool-call timeline that shows the reasoning.
+> Platformă demo de agenți AI pentru **Hack A Ton 2026**. În stânga vorbești cu un agent Anthropic. În dreapta vezi în timp real ce face: un Chromium real care navighează live (audiența îl vede), artefacte UI generate de agent (charturi, tabele, kanban, hărți) și un timeline de tool calls care arată raționamentul.
 
 **Live:** [https://hack.rzs-it.ro](https://hack.rzs-it.ro) · **Browser pane:** [https://browser.hack.rzs-it.ro/vnc.html](https://browser.hack.rzs-it.ro/vnc.html)
 
 ---
 
-## TL;DR — Why this wins
+## TL;DR — De ce câștigăm
 
-In a 5-minute demo against 30 other chat UIs, judges remember **agents that visibly do things**.
-This stack ships with a 2-pane UI where:
+Într-un demo de 5 minute împotriva a 30 de chat UI-uri, jurații își amintesc **agenții care fac lucruri vizibile**.
 
-- **Left** is the chat with the model (Claude Sonnet 4.6 via the Anthropic API).
-- **Right** is the agent's *stage* — automatically switches between **a real browser**, **generative React artifacts**, **a raw code view**, and **a live tool-call timeline** depending on what the agent is doing at that moment.
+Stack-ul are 2 panouri:
+- **Stânga** — chat cu Claude Sonnet 4.6 (Anthropic API).
+- **Dreapta** — *scena* agentului, comută automat între **un browser real**, **artefacte React generate live**, **view de cod brut** și **timeline de tool calls** în funcție de ce face agentul în acel moment.
 
-The whole thing is wired around the **Model Context Protocol (MCP)** — every tool the agent uses (web search, browser actions, artifact rendering, SQL queries) is a real MCP tool served from a dedicated MCP server. So during the hackathon we only have to add 3-5 challenge-specific MCP tools and update the system prompt.
+Tot e construit pe **Model Context Protocol (MCP)** — fiecare tool (web search, browser, render artifact, SQL) e expus ca tool MCP. În timpul hackathon-ului adăugăm 3-5 tool-uri specifice challenge-ului ales și schimbăm system prompt-ul.
 
 ---
 
-## Architecture (live)
+## Arhitectură
 
 ```
 ┌─────────────────────────────┬─────────────────────────────────┐
 │  ChatPane (chat)            │  StagePane (live agent view)    │
-│  - Anthropic SSE streaming  │  Auto-switches between:         │
+│  - SSE streaming Anthropic  │  Auto-switch între:             │
 │  - Tool-call bubbles inline │  • Browser   (noVNC iframe)     │
 │  - Markdown rendering       │  • Artifact  (React renderers)  │
 │                             │  • Code      (raw tool output)  │
-│                             │  • Timeline  (all tool calls)   │
+│                             │  • Timeline  (toate tool calls) │
 └──────────┬──────────────────┴────────────────┬────────────────┘
            │ POST /api/chat (SSE)               │ GET /api/events (SSE)
            ▼                                    ▼
        ┌─────────────────────────────────────────────┐
        │ Next.js 15 (apps/web)                       │
-       │ - lib/agent-loop.ts: Anthropic tool-use     │
+       │ - lib/agent-loop.ts: bucla Anthropic tool   │
        │ - lib/mcp-client.ts: HTTP streamable MCP    │
        │ - lib/event-bus.ts: Redis pub/sub fan-out   │
        └────────┬──────────────────────┬─────────────┘
-                │ MCP HTTP              │ WS (Playwright CDP)
+                │ MCP HTTP              │ WS (Playwright)
                 ▼                       ▼
         ┌──────────────────┐    ┌──────────────────────┐
         │ MCP server       │───▶│ Browser worker       │
@@ -48,52 +48,57 @@ The whole thing is wired around the **Model Context Protocol (MCP)** — every t
                 ▼
         ┌──────────────────┐    ┌──────────────────┐
         │ Postgres         │    │ Redis            │
-        │ (db_query tool)  │    │ (event bus)      │
+        │ (tool db_query)  │    │ (event bus)      │
         └──────────────────┘    └──────────────────┘
 ```
 
-All four services run on the same VPS in a single `docker-compose.prod.yml`, attached to the existing **Coolify** docker network. Coolify's bundled **Traefik** handles TLS via Let's Encrypt for both `hack.rzs-it.ro` (web) and `browser.hack.rzs-it.ro` (noVNC viewer). The MCP server and Postgres stay internal — only reachable from inside the docker network.
+Toate cele 4 servicii rulează pe VPS într-un singur `docker-compose.prod.yml`, atașate la rețeaua docker `coolify` existentă. **Traefik** (deja pornit de Coolify) face TLS-ul via Let's Encrypt pentru `hack.rzs-it.ro` (web) și `browser.hack.rzs-it.ro` (viewer noVNC). MCP server și Postgres rămân interne — accesibile doar din rețeaua docker.
 
 ---
 
-## What's in each service
+## Ce e în fiecare serviciu
 
 ### `apps/web` — Next.js 15 App Router (TypeScript)
 
-| File | Purpose |
+| Fișier | Rol |
 |---|---|
-| `app/api/chat/route.ts` | POST endpoint. Streams the agent loop as SSE: text deltas, tool_call_start/end, errors, done. |
-| `app/api/events/route.ts` | GET endpoint. Subscribes to Redis `stage:<sessionId>` channel and forwards to the client. Drives the right pane. |
-| `app/api/health/route.ts` | Reports Anthropic key presence, MCP tool count, Redis ping, browser configuration. Used by the deploy health check. |
-| `lib/anthropic.ts` | Anthropic SDK client + system prompt with inline tool schemas. |
-| `lib/agent-loop.ts` | The tool-use loop: stream → collect tool_use blocks → call MCP → feed tool_result back → repeat (max 12 steps). |
-| `lib/mcp-client.ts` | One persistent `@modelcontextprotocol/sdk` client per process, talks streamable HTTP to the MCP server. |
-| `lib/event-bus.ts` | ioredis wrappers around the `stage:<sessionId>` pub/sub channel. |
-| `lib/artifact-schema.ts` | Zod schemas for the 6 artifact types (chart, table, kanban, map, markdown, iframe). |
+| `app/api/chat/route.ts` | Endpoint POST. Streameză bucla agentului ca SSE: text deltas, tool_call_start/end, erori, done. |
+| `app/api/events/route.ts` | Endpoint GET. Se abonează la Redis `stage:<sessionId>` și forwardează la client. Drive-uiește panoul drept. |
+| `app/api/health/route.ts` | Raportează prezența cheii Anthropic, numărul de tool-uri MCP, ping Redis, browser config. Health check de deploy. |
+| `lib/anthropic.ts` | Client Anthropic SDK + system prompt cu reguli anti-halucinație și scheme inline pentru tools. |
+| `lib/agent-loop.ts` | Bucla de tool use: stream → adună tool_use blocks → cheamă MCP → trimite înapoi tool_result → repetă (max 12 pași). |
+| `lib/mcp-client.ts` | Un client `@modelcontextprotocol/sdk` persistent per proces, vorbește streamable HTTP cu MCP server-ul. |
+| `lib/event-bus.ts` | Wrappere ioredis peste canalul pub/sub `stage:<sessionId>`. |
+| `lib/artifact-schema.ts` | Scheme Zod pentru cele 6 tipuri de artefacte (chart, table, kanban, map, markdown, iframe). |
+| `lib/stage-store.ts` | Reducer client-side care primește event-uri SSE, ține istoricul de tool calls + artefacte și decide tab-ul activ. |
 | `components/chat/*` | ChatPane, MessageList, Composer, ToolCallBubble (collapsible). |
 | `components/stage/*` | StagePane (tabs), BrowserView (noVNC iframe), ArtifactView (recharts/markdown/etc), CodeView, Timeline. |
 
-### `apps/mcp-server` — Express + `@modelcontextprotocol/sdk` (TypeScript)
+### `apps/mcp-server` — Express + `@modelcontextprotocol/sdk`
 
-Streamable HTTP transport with proper session tracking (`Mcp-Session-Id` header). 7 tools shipped:
+Transport streamable HTTP cu session tracking proper (header `Mcp-Session-Id`). 7 tools livrate:
 
-| Tool | Description |
+| Tool | Descriere |
 |---|---|
-| `web_search(query, count?)` | Brave Search API. Returns title/url/snippet. |
-| `browser_navigate(url)` | Drive the headed Chromium to a URL. Audience sees it. |
-| `browser_click(selector)` | Click a CSS or text= selector. |
-| `browser_type(selector, text, submit?)` | Type into an input, optionally press Enter. |
-| `browser_screenshot(fullPage?)` | PNG screenshot as a data URL. |
-| `render_artifact(type, props)` | Push a typed React artifact onto the stage (chart/table/kanban/map/markdown/iframe). |
-| `db_query(sql, limit?)` | Read-only Postgres (SELECT/WITH only, regex guard). |
+| `web_search(query, count?)` | Brave Search API. Returnează title/url/snippet. |
+| `browser_navigate(url)` | Conduce Chromium headed la un URL. Audiența vede live. |
+| `browser_click(selector)` | Click pe selector CSS sau `text=`. |
+| `browser_type(selector, text, submit?)` | Tastează în input, opțional apasă Enter. |
+| `browser_screenshot(fullPage?)` | PNG screenshot ca data URL. |
+| `render_artifact(type, props)` | Push un artefact React tipat pe scenă (chart/table/kanban/map/markdown/iframe). |
+| `db_query(sql, limit?)` | Postgres read-only (doar SELECT/WITH, regex guard). |
 
 ### `apps/browser-worker` — Playwright + Xvfb + x11vnc + noVNC
 
-Custom `tsx` entrypoint (`src/server.ts`) calls `chromium.launchServer({ host: "::", port: 3002 })` so the WebSocket endpoint accepts both IPv4 and IPv6 (Docker's coolify network returns IPv6 ULA from DNS, the default Playwright CLI binds to `localhost` only — gotcha that took an hour to find). Xvfb on `:99`, x11vnc on `:5900`, websockify (which both serves noVNC HTML and proxies WS to VNC) on `:6080`. Traefik exposes `:6080` at `browser.hack.rzs-it.ro` so the iframe in the right pane shows the live browser.
+Entrypoint custom `tsx` (`src/server.ts`) care apelează `chromium.launchServer({ host: "::", port: 3002, wsPath: "/" })` ca:
+- WebSocket-ul să răspundă atât pe IPv4 cât și pe IPv6 (rețeaua docker `coolify` returnează IPv6 ULA din DNS — CLI-ul implicit Playwright bindează doar pe `localhost`, gotcha care ne-a luat o oră).
+- Path-ul WS să fie fix `/` (default-ul Playwright generează un GUID random ca security default).
+
+Xvfb pe `:99`, x11vnc pe `:5900`, websockify (servește noVNC HTML + proxy WS la VNC) pe `:6080`. Traefik expune `:6080` la `browser.hack.rzs-it.ro` ca iframe-ul din panoul drept să arate browser-ul live.
 
 ### Postgres + Redis
 
-Dedicated containers (`hackaton-postgres`, `hackaton-redis`) on a named volume + the coolify network. Postgres password is stored in `/opt/hackaton-stack/.env`; the MCP server reads `SUPABASE_DB_URL` constructed in compose from that password.
+Containere dedicate (`hackaton-postgres`, `hackaton-redis`) pe volum nume + rețeaua coolify. Parola Postgres e în `/opt/hackaton-stack/.env`; MCP server citește `SUPABASE_DB_URL` construit în compose din acea parolă.
 
 ---
 
@@ -101,81 +106,109 @@ Dedicated containers (`hackaton-postgres`, `hackaton-redis`) on a named volume +
 
 `.github/workflows/deploy.yml`:
 
-1. **Build matrix** (parallel): all 3 images → `ghcr.io/andreisirbu91-lab/hackathon-{web,mcp,browser}:latest`. GHA cache scoped per service. Pushes built artifacts as a side-effect.
-2. **Deploy job** (after build): SSH into the VPS using `webfactory/ssh-agent`, SCP the production compose file to `/opt/hackaton-stack/`, then `docker compose pull && docker compose up -d --force-recreate`.
-3. **Health check**: poll `https://hack.rzs-it.ro/api/health` until 200.
+1. **Build matrix** (paralel): 3 imagini → `ghcr.io/andreisirbu91-lab/hackathon-{web,mcp,browser}:latest`. Cache GHA per serviciu.
+2. **Deploy job** (după build): SSH în VPS via `webfactory/ssh-agent`, SCP compose-ul de prod la `/opt/hackaton-stack/`, apoi `docker compose pull && docker compose up -d --force-recreate`.
+3. **Health check**: poll la `https://hack.rzs-it.ro/api/health` până la 200.
 
-Secrets used: `VPS_HOST`, `VPS_USER`, `VPS_KNOWN_HOSTS`, `VPS_SSH_KEY` (ed25519 deploy key), `CR_PAT` (PAT with `read:packages` for the VPS to pull from GHCR).
+`.github/workflows/ci.yml` (parallel cu deploy): typecheck + build pentru web și mcp-server, ca să primim feedback rapid pe PR-uri.
 
-Workflow strips whitespace from `VPS_USER`/`VPS_HOST` before use (paste-from-browser ate a newline more than once).
+Secrets folosite: `VPS_HOST`, `VPS_USER`, `VPS_KNOWN_HOSTS`, `VPS_SSH_KEY` (cheie ed25519), `CR_PAT` (PAT cu `read:packages` ca VPS-ul să pull din GHCR).
+
+Workflow-ul face strip la whitespace din `VPS_USER`/`VPS_HOST` înainte de folosire (paste-ul din browser a mâncat o linie nouă mai des de o dată).
 
 ---
 
-## Local dev
+## Dev local
 
 ```bash
 cp .env.example .env
-# fill ANTHROPIC_API_KEY and (optional) BRAVE_SEARCH_API_KEY
+# completează ANTHROPIC_API_KEY și (opțional) BRAVE_SEARCH_API_KEY
 docker compose up --build
 open http://localhost:3000
-# noVNC viewer for local dev:
+# Viewer noVNC pentru dev local:
 open http://localhost:6080/vnc.html?autoconnect=1
 ```
 
 ---
 
-## Customizing for a sponsor challenge during the hackathon
+## Customizare pentru un sponsor challenge în timpul hackathon-ului
 
-| Goal | File | What to change |
+| Scop | Fișier | Ce schimbi |
 |---|---|---|
-| Change agent persona / objective | `apps/web/lib/anthropic.ts` | `SYSTEM_PROMPT` |
-| Add new tool the agent can call | `apps/mcp-server/src/tools/*.ts` + register in `index.ts` | Define schema + handler |
-| Add a new artifact type | `apps/web/lib/artifact-schema.ts` + `components/stage/ArtifactView.tsx` | Add Zod variant + renderer |
-| Restrict / replace data source | `apps/mcp-server/src/tools/db_query.ts` | Already read-only; swap connection string |
-| Re-skin | `apps/web/app/globals.css` + `tailwind.config.ts` colors block + `app/page.tsx` brand | Logo, copy, palette |
+| Personă/obiectiv agent | `apps/web/lib/anthropic.ts` | `SYSTEM_PROMPT` |
+| Tool nou disponibil agentului | `apps/mcp-server/src/tools/*.ts` + înregistrare în `index.ts` | Schema + handler |
+| Tip nou de artefact | `apps/web/lib/artifact-schema.ts` + `components/stage/ArtifactView.tsx` | Variantă Zod + renderer |
+| Restricționează/înlocuiește sursa de date | `apps/mcp-server/src/tools/db_query.ts` | Deja read-only; schimbi connection string |
+| Re-skin | `apps/web/app/globals.css` + culori `tailwind.config.ts` + brand `app/page.tsx` | Logo, copy, paletă |
 
 ---
 
-## Live Q&A — what to tell the judges
+## Live Q&A — ce le spui jurătorilor
 
-**Întrebare:** *Ce face mai exact?*
-> E un *agentic AI workstation* generic. Pe stânga vorbești cu Claude. Pe dreapta vezi în timp real cât face agentul — browser real care navighează, chart-uri și tabele generate de el, timeline cu fiecare tool call. Demo-ul de astăzi îți arată challenge-ul X, dar template-ul merge pentru oricare din cele 15 challenges ale sponsorilor.
+**Q:** *Ce face mai exact?*
 
-**Întrebare:** *De ce e diferit de alt chat?*
-> Pentru că nu e doar chat. Tools-urile sunt servite printr-un **MCP server** propriu, cu transport HTTP streamable — același protocol pe care Anthropic l-a deschis luna trecută pentru integrare cu Claude Desktop. Înseamnă că pot să adaug 5 tools noi în 30 de minute și agentul le folosește imediat. Plus, browser-ul nu e screenshot poll — e un container Playwright cu Xvfb + noVNC, audiența vede cursorul real cum se mișcă.
+> E un *agentic AI workstation* generic. În stânga vorbești cu Claude. În dreapta vezi în timp real cât face agentul — browser real care navighează, chart-uri și tabele generate de el, timeline cu fiecare tool call. Demo-ul de astăzi îți arată challenge-ul X, dar template-ul merge pentru oricare din cele 15 challenges ale sponsorilor.
 
-**Întrebare:** *Cât a durat să construiți template-ul?*
-> Vreo 4 ore de pre-work la rece — Next.js 15, MCP server, Playwright + Xvfb, docker-compose, Coolify deploy, GitHub Actions cu build matrix pe GHCR. În timpul hackathon-ului am scris doar logic-ul specific challenge-ului ales (3-5 tools custom + system prompt + skin).
+**Q:** *Cu ce e diferit față de un alt chat?*
 
-**Întrebare:** *Cum scalează / cum o duci în producție?*
-> 4 containere stateless (web, MCP, browser, Postgres + Redis) într-un singur compose. Traefik face TLS, Coolify orchestrează. Pentru multi-tenant adăugăm un browser worker per sesiune (Playwright server poate spawna multiple contexts). Postgres + Redis sunt rolă jucate de Supabase deja existent sau Neon dacă vrem cloud-managed. Pentru cost: tot demo-ul rulează pe un VPS Hetzner de €30/lună plus Anthropic API care e pay-per-token.
+> Nu e doar chat. Tool-urile sunt servite printr-un **MCP server** propriu, cu transport HTTP streamable — același protocol pe care Anthropic l-a deschis pentru integrare cu Claude Desktop. Pot să adaug 5 tools noi în 30 de minute și agentul le folosește imediat. Plus, browser-ul nu e screenshot poll — e un container Playwright cu Xvfb + noVNC, audiența vede cursorul real cum se mișcă în timp real.
 
-**Întrebare:** *Cât v-a costat un demo run?*
-> Vreo $0.02 pe interacțiune medie (Sonnet 4.6 input + output + ~3 tool calls). Brave Search are 1000 căutări/lună free. Hosting-ul pe VPS-ul propriu e cost fix.
+**Q:** *Cât a durat construirea template-ului?*
 
-**Întrebare:** *Ce nu am avut timp să facem și aș face dacă mai aveam o zi?*
-- Generative UI streaming progresivă (artifact-ul să apară pe măsură ce agentul îl construiește, nu doar la final).
-- Multi-session: în prezent un browser worker e shared per VPS — pentru producție un container per user session via Kubernetes/Docker Swarm.
+> Vreo 4 ore de pre-work la rece — Next.js 15, MCP server, Playwright + Xvfb, docker-compose, deploy via Coolify Traefik, GitHub Actions cu build matrix pe GHCR. În timpul hackathon-ului scriem doar logic-ul specific challenge-ului ales (3-5 tools custom + system prompt + skin).
+
+**Q:** *Cum scalează / cum o duci în producție?*
+
+> 4 containere stateless (web, MCP, browser, Postgres + Redis) într-un singur compose. Traefik face TLS, Coolify orchestrează. Pentru multi-tenant adăugăm un browser worker per sesiune. Postgres + Redis sunt jucat de Supabase deja existent sau Neon dacă vrem cloud-managed. Cost: tot demo-ul rulează pe un VPS Hetzner de €30/lună plus Anthropic API care e pay-per-token.
+
+**Q:** *Cât costă un demo run?*
+
+> Vreo $0.02 pe interacțiune medie (Sonnet 4.6 input + output + ~3 tool calls). Brave Search are 1000 căutări/lună free. Hosting-ul pe VPS-ul nostru e cost fix.
+
+**Q:** *Cum ne asigurăm că agentul nu inventează?*
+
+> Sistem prompt cu reguli stricte: training data e tratată ca *unreliable* pentru entități real-world. Pentru orice recomandare (restaurante, ore, prețuri) e obligat să facă `web_search` întâi și să citeze sursa. Dacă search-ul nu returnează nimic, e instruit să spună "n-am găsit" în loc să inventeze. Plus, putem face `browser_navigate` ca să verifice site-ul real al unei afaceri înainte să recomandăm.
+
+**Q:** *Ce n-ai avut timp să faci și ai face cu încă o zi?*
+
+- Generative UI streaming progresivă (artefactul să apară pe măsură ce agentul îl construiește).
+- Multi-session: în prezent browser worker e shared per VPS — pentru prod, un container per user session via Kubernetes/Swarm.
 - Voice in cu Realtime API (toggle pe care îl pornesc dacă judecătorii vor să încerce ei).
+- Persistență sesiune (refresh-ul pierde state-ul; ar fi trebuit Supabase + auth pentru chat history).
 
-**Întrebare:** *Open source?*
-> Da, repo-ul e [github.com/andreisirbu91-lab/hackathon](https://github.com/andreisirbu91-lab/hackathon). Plus, e gândit ca **template** — alți participanți de la hackathoanele viitoare pot lua repo-ul, schimbă prompt-ul și tools-urile, e ready-to-deploy în Coolify în 15 minute.
+**Q:** *Open source?*
 
----
-
-## Notable engineering decisions
-
-- **Anthropic SDK directly, not Vercel AI SDK.** We need precise control over the SSE event stream so the right pane can react to specific tool events (`tool_call_start`, `artifact`, `browser`). Vercel AI SDK adds an abstraction we didn't need.
-- **MCP via HTTP streamable, not stdio.** Each service is its own container. HTTP lets us scale the MCP server independently and reuse the same protocol both internally and (potentially) externally for Claude Desktop / Cursor clients to plug into.
-- **Redis pub/sub for stage events.** Tool calls in the MCP server (e.g., `render_artifact`, `browser_navigate`) publish events directly to a per-session channel. The Next.js `/api/events` SSE endpoint subscribes. Decouples the agent loop from the UI completely — we could fan out to multiple viewers later.
-- **noVNC iframe instead of screenshot polling.** A real Chromium with x11vnc gets us cursor movement, animations, scroll, video — anything that runs in the browser. Polling screenshots would feel choppy and miss the human-grade "magic" judges look for.
-- **Mirror flowdeskone's GHCR + SSH deploy.** Skipped Coolify "Application" creation: the same VPS already runs flowdeskone with a `docker-compose.prod.yml` that has Traefik labels but isn't registered with Coolify. We do the same pattern for faster iteration and zero coupling to Coolify's app lifecycle.
+> Da, repo-ul e [github.com/andreisirbu91-lab/hackathon](https://github.com/andreisirbu91-lab/hackathon). Plus, e gândit ca **template** — alți participanți la hackathoane viitoare pot lua repo-ul, schimbă prompt-ul și tools-urile, e ready-to-deploy pe Coolify în 15 minute.
 
 ---
 
-## Files modified most during the hackathon (priority)
+## Decizii inginerești notabile
+
+- **Anthropic SDK direct, nu Vercel AI SDK.** Avem nevoie de control precis pe stream-ul SSE ca panoul drept să reacționeze la eventuri specifice (`tool_call_start`, `artifact`, `browser`). Vercel AI SDK adaugă o abstracție de care n-avem nevoie.
+- **MCP via HTTP streamable, nu stdio.** Fiecare serviciu e container separat. HTTP ne lasă să scalăm MCP server-ul independent și să refolosim același protocol intern și (eventual) extern pentru clienți Claude Desktop / Cursor.
+- **Redis pub/sub pentru stage events.** Tool calls în MCP server (ex: `render_artifact`, `browser_navigate`) publică direct pe canalul session-ului. Endpoint-ul SSE `/api/events` din Next.js se abonează. Decuplează complet bucla agentului de UI — putem fan-out la mai mulți viewers ulterior.
+- **noVNC iframe în loc de screenshot polling.** Chromium real cu x11vnc ne dă mișcarea cursorului, animații, scroll, video — orice rulează în browser. Polling de screenshots ar fi sacadat și ar rata acel "magic" pe care îl caută jurătorii.
+- **Mirror la patternul flowdeskone GHCR + SSH deploy.** Sărim peste crearea unei Coolify "Application": același VPS rulează deja flowdeskone cu un `docker-compose.prod.yml` care are label-uri Traefik dar nu e înregistrat în Coolify. Facem același pattern pentru iterație mai rapidă și cuplaj zero cu Coolify app lifecycle.
+
+---
+
+## Bug-uri găsite și fixate în timpul setup-ului (pentru memoria viitoare)
+
+1. **npm workspaces hoist** — `workspaces: ["apps/*"]` în root `package.json` făcea ca `cd apps/web && npm install` să hoist-uiască la root, lăsând `apps/web/node_modules` gol → CI typecheck a eșuat cu "Cannot find module 'react'". Fix: fiecare app e standalone, lockfile per-app.
+2. **Empty `public/` directory** — git nu trackuiește directoare goale, deci docker build n-avea `/app/public` pentru `COPY` în multi-stage. Fix: `.gitkeep`.
+3. **SSH line continuation** — `ssh user@host \` + `'mkdir...'` pe linia următoare era rupt de whitespace YAML invizibil → bash trata ssh fără argumente și apoi încerca să execute string-ul `'mkdir...'` ca o comandă. Fix: heredoc `bash -s <<'REMOTE'`.
+4. **Secrets cu newline** — `VPS_HOST` paste din browser includea `\n` → `ssh "$VPS_USER@$VPS_HOST"` zicea "hostname contains invalid characters". Fix: `tr -d '[:space:]'` înainte de folosire.
+5. **MCP sesiune neinițializată** — fiecare POST /mcp crea un server + transport nou, deci `initialize` ajungea pe transport A, `listTools` pe transport B → "Server not initialized". Fix: tracking de sesiuni prin `Mcp-Session-Id` header.
+6. **Playwright bindează doar IPv6 localhost** — `npx playwright run-server` default leagă pe `::1` ; rețeaua docker coolify rezolvă `hackaton-browser` la IPv6 ULA care nu e localhost → ECONNREFUSED. Fix: script custom `chromium.launchServer({host: "::"})`.
+7. **Playwright version mismatch** — `npm install` a rezolvat `^1.50.0` la 1.60.0 dar Dockerfile încă pe `mcr.microsoft.com/playwright:v1.50.0-noble` (binar chromium incompatibil). Fix: bump base image la `v1.60.0-noble`.
+8. **WS path GUID** — `chromium.launchServer` generează un path random ca security default, dar clientul MCP se conecta la `ws://hackaton-browser:3002` fără path. Fix: `wsPath: "/"` (sigur pentru că port-ul nu e expus în afara rețelei docker).
+9. **Hallucination** — agent a recomandat "restaurant Bouzuki" care e închis de ani de zile (training data stale). Fix: reguli stricte anti-hallucination în system prompt — `web_search` obligatoriu pentru orice recomandare real-world.
+
+---
+
+## Fișiere modificate cel mai des în timpul hackathon-ului (prioritate)
 
 1. `apps/web/lib/anthropic.ts` — system prompt + persona.
-2. `apps/mcp-server/src/tools/*.ts` — challenge-specific tools.
-3. `apps/web/components/stage/ArtifactView.tsx` — challenge-specific artifact types.
+2. `apps/mcp-server/src/tools/*.ts` — tools specifice challenge-ului.
+3. `apps/web/components/stage/ArtifactView.tsx` — tipuri custom de artifact.
 4. `apps/web/app/page.tsx` — branding, hero copy.

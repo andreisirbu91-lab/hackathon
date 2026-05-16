@@ -15,3 +15,5 @@ build/
 coverage/
 *.tsbuildinfo
 .pnpm-store/
+HACKATON-2026.pdf
+render-pdf.cjs
