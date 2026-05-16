@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+*.log
+.env
+.env.local
+.env.*.local
+.DS_Store
+.turbo/
+.vercel/
+.idea/
+.vscode/
+coverage/
+*.tsbuildinfo
+.pnpm-store/

@@ -1,0 +1,29 @@
+name: deploy
+
+on:
+  workflow_run:
+    workflows: ["ci"]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  trigger-coolify:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Coolify deploy webhook
+        run: |
+          for w in COOLIFY_WEB_WEBHOOK COOLIFY_MCP_WEBHOOK COOLIFY_BROWSER_WEBHOOK; do
+            url="${!w}"
+            if [ -n "$url" ]; then
+              echo "Triggering $w"
+              curl -fsSL -X GET -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" "$url" || echo "warn: $w failed"
+            else
+              echo "Skipping $w (not set)"
+            fi
+          done
+        env:
+          COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
+          COOLIFY_MCP_WEBHOOK: ${{ secrets.COOLIFY_MCP_WEBHOOK }}
+          COOLIFY_BROWSER_WEBHOOK: ${{ secrets.COOLIFY_BROWSER_WEBHOOK }}

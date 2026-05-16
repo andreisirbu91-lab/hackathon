@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next { height: 100%; }
+body {
+  background: hsl(222 47% 6%);
+  color: hsl(210 40% 96%);
+  font-feature-settings: "cv11", "ss01";
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: hsl(222 30% 22%); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.prose-chat p { margin: 0.25rem 0; }
+.prose-chat pre { background: hsl(222 30% 14%); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.85rem; }
+.prose-chat code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+.prose-chat a { color: hsl(199 89% 60%); text-decoration: underline; }

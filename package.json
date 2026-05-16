@@ -1,0 +1,17 @@
+{
+  "name": "hackaton-stack",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:mcp": "npm --workspace apps/mcp-server run dev",
+    "dev:browser": "npm --workspace apps/browser-worker run dev",
+    "build": "npm --workspaces run build --if-present",
+    "typecheck": "npm --workspaces run typecheck --if-present",
+    "lint": "npm --workspaces run lint --if-present"
+  }
+}

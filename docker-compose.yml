@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [hackaton]
+
+  browser:
+    build: ./apps/browser-worker
+    restart: unless-stopped
+    shm_size: 2gb
+    ports:
+      - "6080:6080"   # noVNC viewer (local dev only; in prod it's behind Traefik)
+    networks: [hackaton]
+
+  mcp:
+    build: ./apps/mcp-server
+    restart: unless-stopped
+    depends_on: [redis, browser]
+    environment:
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      BROWSER_PLAYWRIGHT_WS: ws://browser:3002
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY}
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL}
+    networks: [hackaton]
+
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    depends_on: [redis, mcp]
+    ports:
+      - "3000:3000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      REDIS_URL: redis://redis:6379
+      MCP_SERVER_URL: http://mcp:3001/mcp
+      NEXT_PUBLIC_BROWSER_VNC_URL: ${NEXT_PUBLIC_BROWSER_VNC_URL:-http://localhost:6080/vnc.html}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hack A Ton 2026}
+    networks: [hackaton]
+
+networks:
+  hackaton:

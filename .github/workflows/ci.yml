@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install web
+        working-directory: apps/web
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Install mcp-server
+        working-directory: apps/mcp-server
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Typecheck web
+        working-directory: apps/web
+        run: npx tsc --noEmit
+
+      - name: Typecheck mcp-server
+        working-directory: apps/mcp-server
+        run: npx tsc --noEmit
+
+      - name: Build web
+        working-directory: apps/web
+        run: npx next build
+
+      - name: Build mcp-server
+        working-directory: apps/mcp-server
+        run: npm run build
