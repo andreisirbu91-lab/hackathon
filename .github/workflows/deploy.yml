@@ -80,22 +80,29 @@ jobs:
           echo "${{ secrets.VPS_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Ensure /opt/hackaton-stack exists
+      - name: Sanitize VPS secrets
         env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
+          RAW_VPS_USER: ${{ secrets.VPS_USER }}
+          RAW_VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          VPS_USER=$(printf '%s' "$RAW_VPS_USER" | tr -d '[:space:]')
+          VPS_HOST=$(printf '%s' "$RAW_VPS_HOST" | tr -d '[:space:]')
+          if [ -z "$VPS_USER" ] || [ -z "$VPS_HOST" ]; then
+            echo "::error::VPS_USER or VPS_HOST secret is empty after stripping whitespace"
+            exit 1
+          fi
+          echo "VPS_USER=$VPS_USER" >> "$GITHUB_ENV"
+          echo "VPS_HOST=$VPS_HOST" >> "$GITHUB_ENV"
+          echo "Target: $VPS_USER@$VPS_HOST"
+
+      - name: Ensure /opt/hackaton-stack exists
         run: ssh "$VPS_USER@$VPS_HOST" 'mkdir -p /opt/hackaton-stack && chmod 755 /opt/hackaton-stack'
 
       - name: SCP docker-compose.prod.yml
-        env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: scp docker-compose.prod.yml "$VPS_USER@$VPS_HOST:/opt/hackaton-stack/docker-compose.prod.yml"
 
       - name: Pull images and recreate containers
         env:
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
           GHCR_TOKEN: ${{ secrets.CR_PAT }}
           GITHUB_ACTOR: ${{ github.actor }}
         run: |
