@@ -14,11 +14,13 @@ export type ToolCallState = {
 
 export type ArtifactItem = { id: string; type: string; props: unknown; at: number };
 
+export type TabKey = "browser" | "artifact" | "code" | "timeline";
+
 export type StageState = {
   toolCalls: ToolCallState[];
   artifacts: ArtifactItem[];
   activeBrowserUrl?: string;
-  activeTab: "browser" | "artifact" | "code" | "timeline";
+  activeTab: TabKey;
 };
 
 export function useStageEvents(sessionId: string | null) {
@@ -55,7 +57,8 @@ function reduce(s: StageState, evt: any): StageState {
         startedAt: evt.at,
         status: "running",
       };
-      const tab = pickTabFromTool(evt.name) ?? s.activeTab;
+      // Always auto-switch on tool start so the audience sees the action live.
+      const tab = pickTabFromTool(evt.name) ?? "code";
       return { ...s, toolCalls: [...s.toolCalls, tc], activeTab: tab };
     }
     case "tool_call_end": {
@@ -83,8 +86,9 @@ function reduce(s: StageState, evt: any): StageState {
   }
 }
 
-function pickTabFromTool(name: string): StageState["activeTab"] | null {
+function pickTabFromTool(name: string): TabKey | null {
   if (name.startsWith("browser_")) return "browser";
   if (name === "render_artifact") return "artifact";
+  if (name === "web_search" || name === "db_query") return "code";
   return null;
 }

@@ -9,6 +9,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
+COPY src ./src
 COPY start.sh ./
 RUN chmod +x start.sh
 

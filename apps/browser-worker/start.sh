@@ -20,5 +20,5 @@ sleep 0.3
 
 echo "[browser-worker] Xvfb :99, x11vnc:5900, noVNC:6080, Playwright WS:3002"
 
-# Playwright server (headed because DISPLAY is set) — audience sees the browser
-exec npx playwright run-server --port 3002 --path /
+# Playwright server bound to 0.0.0.0 (so other containers can connect)
+exec npm start
