@@ -8,6 +8,7 @@ const HOST = process.env.HOST ?? "::";
     headless: false,
     host: HOST,
     port: PORT,
+    wsPath: "/",
     args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
   });
   console.log(`[browser-worker] Playwright Chromium server listening on ${server.wsEndpoint()}`);
