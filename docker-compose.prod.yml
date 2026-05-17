@@ -24,23 +24,19 @@ services:
     shm_size: 2gb
     networks: [coolify]
     labels:
+      # Reverse-proxy /vnc/* on the main domain (same origin as the app) to the
+      # noVNC HTTP server inside this container. The browser subdomain is no
+      # longer exposed publicly — eliminates the unauthenticated entry point.
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
-      - "traefik.http.middlewares.gzip.compress=true"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-
-      - "traefik.http.routers.http-hackaton-browser.entryPoints=http"
-      - "traefik.http.routers.http-hackaton-browser.rule=Host(`browser.hack.rzs-it.ro`) && PathPrefix(`/`)"
-      - "traefik.http.routers.http-hackaton-browser.middlewares=redirect-to-https"
-      - "traefik.http.routers.http-hackaton-browser.service=http-hackaton-browser"
-      - "traefik.http.routers.https-hackaton-browser.entryPoints=https"
-      - "traefik.http.routers.https-hackaton-browser.rule=Host(`browser.hack.rzs-it.ro`) && PathPrefix(`/`)"
-      - "traefik.http.routers.https-hackaton-browser.middlewares=gzip"
-      - "traefik.http.routers.https-hackaton-browser.service=https-hackaton-browser"
-      - "traefik.http.routers.https-hackaton-browser.tls=true"
-      - "traefik.http.routers.https-hackaton-browser.tls.certresolver=letsencrypt"
-      - "traefik.http.services.http-hackaton-browser.loadbalancer.server.port=6080"
-      - "traefik.http.services.https-hackaton-browser.loadbalancer.server.port=6080"
+      - "traefik.http.middlewares.hackaton-vnc-strip.stripprefix.prefixes=/vnc"
+      - "traefik.http.routers.hackaton-browser-vnc.entryPoints=https"
+      - "traefik.http.routers.hackaton-browser-vnc.rule=Host(`hack.rzs-it.ro`) && PathPrefix(`/vnc`)"
+      - "traefik.http.routers.hackaton-browser-vnc.middlewares=hackaton-vnc-strip"
+      - "traefik.http.routers.hackaton-browser-vnc.tls=true"
+      - "traefik.http.routers.hackaton-browser-vnc.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.hackaton-browser-vnc.service=hackaton-browser-vnc"
+      - "traefik.http.services.hackaton-browser-vnc.loadbalancer.server.port=6080"
 
   mcp:
     image: ghcr.io/andreisirbu91-lab/hackathon-mcp:latest
