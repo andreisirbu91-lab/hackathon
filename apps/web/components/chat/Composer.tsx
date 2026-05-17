@@ -1,7 +1,7 @@
 "use client";
 import { useState, KeyboardEvent } from "react";
-import { Send, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUp, Square } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function Composer({
   onSend,
@@ -13,6 +13,7 @@ export function Composer({
   busy: boolean;
 }) {
   const [text, setText] = useState("");
+  const [focused, setFocused] = useState(false);
 
   const submit = () => {
     if (!text.trim() || busy) return;
@@ -28,25 +29,51 @@ export function Composer({
   };
 
   return (
-    <div className="border-t border-border bg-panel/50 px-3 py-3">
-      <div className="flex gap-2 items-end">
+    <div className="px-4 pt-2 pb-4 bg-bg">
+      <div
+        className={cn(
+          "relative rounded-2xl bg-panel/60 border transition-colors",
+          focused ? "border-accent/50" : "border-border"
+        )}
+      >
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           rows={2}
-          placeholder="Ask the agent..."
-          className="flex-1 resize-none bg-bg border border-border rounded-md px-3 py-2 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          placeholder="Ask the agent…"
+          className="w-full resize-none bg-transparent px-4 py-3 pr-12 text-[13.5px] text-text placeholder:text-muted/60 focus:outline-none"
         />
-        {busy ? (
-          <Button variant="danger" size="icon" onClick={onStop} aria-label="Stop">
-            <Square className="w-4 h-4" />
-          </Button>
-        ) : (
-          <Button size="icon" onClick={submit} disabled={!text.trim()} aria-label="Send">
-            <Send className="w-4 h-4" />
-          </Button>
-        )}
+        <div className="absolute bottom-2 right-2">
+          {busy ? (
+            <button
+              onClick={onStop}
+              aria-label="Stop"
+              className="h-7 w-7 rounded-full bg-danger/90 hover:bg-danger text-white flex items-center justify-center transition"
+            >
+              <Square className="w-3 h-3" fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={submit}
+              disabled={!text.trim()}
+              aria-label="Send"
+              className={cn(
+                "h-7 w-7 rounded-full flex items-center justify-center transition",
+                text.trim()
+                  ? "bg-text text-bg hover:bg-text/90"
+                  : "bg-border text-muted cursor-not-allowed"
+              )}
+            >
+              <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="mt-1.5 px-1 text-[10px] text-muted/50 font-mono">
+        Enter to send · Shift+Enter for newline
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ export function ChatPane({
   return (
     <div className="flex flex-col h-full w-full min-h-0 bg-bg">
       <ScrollArea className="flex-1 min-h-0">
-        <MessageList turns={turns} />
+        <MessageList turns={turns} onPick={onSend} />
       </ScrollArea>
       <Composer onSend={onSend} onStop={onStop} busy={busy} />
     </div>
