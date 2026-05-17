@@ -28,14 +28,28 @@ import type Anthropic from "@anthropic-ai/sdk";
 export async function listToolsForAnthropic(): Promise<Anthropic.Messages.Tool[]> {
   const client = await mcpClient();
   const { tools } = await client.listTools();
-  return tools.map((t) => ({
-    name: t.name,
-    description: t.description ?? "",
-    input_schema: (t.inputSchema as Anthropic.Messages.Tool["input_schema"]) ?? {
+  return tools.map((t) => {
+    // Strip sessionId from the schema the model sees — we inject it server-side.
+    const raw = (t.inputSchema as Anthropic.Messages.Tool["input_schema"]) ?? {
       type: "object" as const,
       properties: {},
-    },
-  }));
+    };
+    const props = { ...(raw.properties ?? {}) } as Record<string, unknown>;
+    delete props.sessionId;
+    const rawRequired = (raw as unknown as { required?: string[] }).required;
+    const required = Array.isArray(rawRequired)
+      ? rawRequired.filter((r) => r !== "sessionId")
+      : undefined;
+    return {
+      name: t.name,
+      description: t.description ?? "",
+      input_schema: {
+        ...raw,
+        properties: props,
+        ...(required ? { required } : {}),
+      } as Anthropic.Messages.Tool["input_schema"],
+    };
+  });
 }
 
 export async function callTool(name: string, args: unknown): Promise<unknown> {

@@ -21,6 +21,7 @@ async function runOne(p) {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  const seenToolIds = new Set();
   const tools = [];
   let text = "";
   while (true) {
@@ -33,8 +34,12 @@ async function runOne(p) {
       if (!line.startsWith("data: ")) continue;
       let evt;
       try { evt = JSON.parse(line.slice(6).trim()); } catch { continue; }
-      if (evt.kind === "tool_call_start") tools.push(evt.name);
-      else if (evt.kind === "text") text += evt.delta;
+      // Each tool block emits tool_call_start twice (streaming + final input).
+      // Dedup by id so step count is accurate.
+      if (evt.kind === "tool_call_start" && !seenToolIds.has(evt.id)) {
+        seenToolIds.add(evt.id);
+        tools.push(evt.name);
+      } else if (evt.kind === "text") text += evt.delta;
     }
   }
   const checks = [];

@@ -21,14 +21,23 @@ export default function Page() {
   const { turns, sessionId, busy, send, stop, usage } = useChat();
   const stageEvents = useStageEvents(sessionId);
   const [manualTab, setManualTab] = useState<TabKey | null>(null);
-  // When the stage's auto-suggested tab changes (agent did something), drop
-  // the manual override so the UI tracks the live action again.
+  const [mobileView, setMobileView] = useState<"chat" | "stage">("chat");
+  // When the stage's auto-suggested tab changes (agent did something):
+  //   - drop the desktop manual override so the active tab follows the action
+  //   - flip the mobile view to "stage" so the user sees what's happening
   useEffect(() => {
     setManualTab(null);
+    setMobileView("stage");
   }, [stageEvents.activeTab]);
+  // Hop back to chat when a fresh user turn appears (user just typed).
+  const turnsCount = turns.length;
+  useEffect(() => {
+    if (turnsCount > 0 && turns[turnsCount - 1]?.role === "user") {
+      setMobileView("chat");
+    }
+  }, [turnsCount, turns]);
   const totalInput = usage.input + usage.cacheCreate + usage.cacheRead;
   const cacheHit = totalInput > 0 ? Math.round((usage.cacheRead / totalInput) * 100) : 0;
-  const [mobileView, setMobileView] = useState<"chat" | "stage">("chat");
 
   const activeTab = manualTab ?? stageEvents.activeTab;
   const state = { ...stageEvents, activeTab };

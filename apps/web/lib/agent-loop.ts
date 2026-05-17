@@ -285,7 +285,13 @@ export async function* runAgent(
       await publishStage(sessionId, { kind: "tool_call_start", id, name, input, at: startedAt });
 
       try {
-        const output = await callTool(name, input);
+        // Inject the real sessionId server-side so MCP tools always reach the
+        // right Redis channel. The model would otherwise have to guess.
+        const inputWithSession =
+          input && typeof input === "object"
+            ? { ...(input as Record<string, unknown>), sessionId }
+            : { sessionId };
+        const output = await callTool(name, inputWithSession);
         const durationMs = Date.now() - startedAt;
         yield { kind: "tool_call_end", id, name, output, durationMs };
         await publishStage(sessionId, { kind: "tool_call_end", id, name, output, durationMs, at: Date.now() });
