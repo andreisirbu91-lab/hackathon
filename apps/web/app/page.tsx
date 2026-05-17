@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatPane } from "@/components/chat/ChatPane";
 import { StagePane } from "@/components/stage/StagePane";
 import { useChat } from "@/lib/chat-store";
@@ -20,12 +20,17 @@ function formatTokens(n: number): string {
 export default function Page() {
   const { turns, sessionId, busy, send, stop, usage } = useChat();
   const stageEvents = useStageEvents(sessionId);
+  const [manualTab, setManualTab] = useState<TabKey | null>(null);
+  // When the stage's auto-suggested tab changes (agent did something), drop
+  // the manual override so the UI tracks the live action again.
+  useEffect(() => {
+    setManualTab(null);
+  }, [stageEvents.activeTab]);
   const totalInput = usage.input + usage.cacheCreate + usage.cacheRead;
   const cacheHit = totalInput > 0 ? Math.round((usage.cacheRead / totalInput) * 100) : 0;
-  const [tabOverride, setTabOverride] = useState<TabKey | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "stage">("chat");
 
-  const activeTab = tabOverride ?? stageEvents.activeTab;
+  const activeTab = manualTab ?? stageEvents.activeTab;
   const state = { ...stageEvents, activeTab };
 
   return (
@@ -106,7 +111,7 @@ export default function Page() {
             mobileView === "stage" ? "flex" : "hidden md:flex"
           )}
         >
-          <StagePane state={state} onTabChange={(t) => setTabOverride(t)} />
+          <StagePane state={state} onTabChange={(t) => setManualTab(t)} />
         </div>
       </main>
     </div>

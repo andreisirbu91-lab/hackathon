@@ -50,6 +50,8 @@ services:
       BROWSER_PLAYWRIGHT_WS: ws://hackaton-browser:3002
       BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
       SUPABASE_DB_URL: postgresql://hackaton:${POSTGRES_PASSWORD}@hackaton-postgres:5432/hackaton
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_SUBAGENT_MODEL: ${ANTHROPIC_SUBAGENT_MODEL:-claude-haiku-4-5}
 
   web:
     image: ghcr.io/andreisirbu91-lab/hackathon-web:latest
