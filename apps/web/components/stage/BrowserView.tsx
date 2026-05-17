@@ -4,7 +4,9 @@ import { Globe } from "lucide-react";
 const VNC_URL = process.env.NEXT_PUBLIC_BROWSER_VNC_URL ?? "http://localhost:6080/vnc.html";
 
 export function BrowserView({ activeUrl }: { activeUrl?: string }) {
-  const src = `${VNC_URL}?autoconnect=1&resize=remote&view_only=1`;
+  // path= (empty) tells noVNC to upgrade WS at "/" instead of the default "/websockify"
+  // which Python websockify doesn't serve.
+  const src = `${VNC_URL}?autoconnect=1&resize=remote&view_only=1&path=`;
   return (
     <div className="h-full flex flex-col bg-bg">
       <div className="border-b border-border px-3 py-2 flex items-center gap-2 text-xs text-muted">
