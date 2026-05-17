@@ -6,11 +6,67 @@ import type Anthropic from "@anthropic-ai/sdk";
 
 const MAX_STEPS = 20;
 const MAX_RATE_RETRIES = 4;
-const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model
+const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model verbatim
 const MAX_TOKENS = 4096;
-// Extended Thinking: model deliberates before responding. Budget is included in
-// max_tokens. Disabled when 0. Modest default keeps cost ~+15% on Sonnet.
 const THINKING_BUDGET = Number(process.env.ANTHROPIC_THINKING_BUDGET ?? "2048");
+
+// When estimated input tokens of the trimmed history exceed this, run a
+// summarization pass on the dropped tail and prepend the summary as context.
+const COMPACTION_THRESHOLD_TOKENS = 4000;
+const COMPACTION_MODEL = process.env.ANTHROPIC_COMPACTION_MODEL ?? "claude-haiku-4-5";
+
+// Per-turn budget. If a single turn's tool-use loop exceeds this many USD,
+// stop early to protect the user. Default 0.25 USD per turn (very generous
+// for Sonnet 4.6 with 4 cached tools and a handful of tool calls).
+const PER_TURN_BUDGET_USD = Number(process.env.AGENT_PER_TURN_BUDGET_USD ?? "0.25");
+
+function estimateTokens(messages: ChatMessage[]): number {
+  // Rough: ~3.5 chars per token. Good enough for thresholding.
+  return Math.ceil(messages.reduce((s, m) => s + (m.content?.length ?? 0), 0) / 3.5);
+}
+
+async function compactIfNeeded(history: ChatMessage[]): Promise<{
+  messages: ChatMessage[];
+  compactedCount: number;
+}> {
+  if (history.length <= HISTORY_KEEP_TURNS) {
+    return { messages: history, compactedCount: 0 };
+  }
+  const tail = history.slice(-HISTORY_KEEP_TURNS);
+  const older = history.slice(0, -HISTORY_KEEP_TURNS);
+  if (estimateTokens(older) < COMPACTION_THRESHOLD_TOKENS) {
+    return { messages: tail, compactedCount: older.length };
+  }
+  // Worth summarizing
+  try {
+    const transcript = older.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
+    const res = await anthropic.messages.create({
+      model: COMPACTION_MODEL,
+      max_tokens: 400,
+      messages: [
+        {
+          role: "user",
+          content:
+            "Summarize this prior conversation in <=150 tokens. Preserve: stable user facts, decisions made, constraints, tools tried. Output a single dense paragraph, no preamble.\n\n" +
+            transcript,
+        },
+      ],
+    });
+    const block = res.content.find((b) => b.type === "text") as { type: "text"; text: string } | undefined;
+    const summary = block?.text ?? "(no summary)";
+    return {
+      messages: [
+        { role: "user", content: `[Previous conversation digest]\n${summary}` },
+        { role: "assistant", content: "Got it, continuing from there." },
+        ...tail,
+      ],
+      compactedCount: older.length,
+    };
+  } catch {
+    // Compaction failed (rate limit etc) — fall back to hard trim
+    return { messages: tail, compactedCount: older.length };
+  }
+}
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -43,9 +99,16 @@ export async function* runAgent(
     },
   ];
 
-  // Truncate history: keep the last N turns to bound input tokens.
-  const trimmed = history.slice(-HISTORY_KEEP_TURNS);
-  const messages: Anthropic.Messages.MessageParam[] = trimmed.map((m) => ({
+  // Compact history if the older portion is heavy; otherwise just trim.
+  const compacted = await compactIfNeeded(history);
+  if (compacted.compactedCount > 0) {
+    await publishStage(sessionId, {
+      kind: "text",
+      delta: `_[compacted ${compacted.compactedCount} earlier turn${compacted.compactedCount === 1 ? "" : "s"} into a digest]_\n`,
+      at: Date.now(),
+    });
+  }
+  const messages: Anthropic.Messages.MessageParam[] = compacted.messages.map((m) => ({
     role: m.role,
     content: m.content,
   }));
@@ -54,8 +117,15 @@ export async function* runAgent(
   // for this turn only. Next turn starts back with MODEL so we recover automatically
   // when the rate-limit sliding window opens up.
   let currentModel = MODEL;
+  let turnCostUsd = 0;
 
   for (let step = 0; step < MAX_STEPS; step++) {
+    if (turnCostUsd >= PER_TURN_BUDGET_USD) {
+      const msg = `Stopped: per-turn budget of $${PER_TURN_BUDGET_USD.toFixed(2)} reached ($${turnCostUsd.toFixed(4)} spent).`;
+      yield { kind: "error", message: msg };
+      await publishStage(sessionId, { kind: "error", message: msg, at: Date.now() });
+      return;
+    }
     let assistantBlocks: Anthropic.Messages.ContentBlock[] | null = null;
     let fellBackThisStep = false;
     let yieldedAny = false;
@@ -98,6 +168,7 @@ export async function* runAgent(
             cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
           };
           const costUsd = costOf(currentModel, usage);
+          turnCostUsd += costUsd;
           const ev = {
             kind: "usage" as const,
             model: currentModel,
