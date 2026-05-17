@@ -15,6 +15,11 @@ import {
 import { renderArtifact, renderArtifactSchema } from "./tools/render_artifact.js";
 import { dbQuery, dbQuerySchema } from "./tools/db_query.js";
 import { submitPlan, submitPlanSchema } from "./tools/submit_plan.js";
+import {
+  memorySave, memorySaveSchema,
+  memoryRecall, memoryRecallSchema,
+  memoryForget, memoryForgetSchema,
+} from "./tools/memory.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -76,6 +81,24 @@ function buildServer(): McpServer {
     "Run a read-only SQL query against the configured Postgres database. SELECT/WITH only.",
     dbQuerySchema,
     async (args) => ({ content: [{ type: "text", text: JSON.stringify(await dbQuery(args)) }] })
+  );
+
+  server.tool("memory_save",
+    "Persist a short note that survives across sessions. Use for user preferences, learned constraints, recurring facts (e.g. 'preferred-city: Mamaia', 'agent-tone: terse'). Idempotent — same key overwrites.",
+    memorySaveSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memorySave(args)) }] })
+  );
+
+  server.tool("memory_recall",
+    "Read back persisted memory. Call this early in a session to load relevant context. Pass `query` to filter by substring; omit for everything (capped at 20).",
+    memoryRecallSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memoryRecall(args)) }] })
+  );
+
+  server.tool("memory_forget",
+    "Delete a memory by key (e.g. when the user says 'forget that').",
+    memoryForgetSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memoryForget(args)) }] })
   );
 
   return server;
