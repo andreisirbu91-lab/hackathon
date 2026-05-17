@@ -18,6 +18,7 @@ export type StageEvent =
   | { kind: "artifact"; id: string; type: string; props: unknown; at: number }
   | { kind: "browser"; action: string; url?: string; at: number }
   | { kind: "text"; delta: string; at: number }
+  | { kind: "usage"; model: string; input: number; output: number; cacheCreate: number; cacheRead: number; costUsd: number; at: number }
   | { kind: "done"; at: number }
   | { kind: "error"; message: string; at: number };
 

@@ -1,6 +1,7 @@
 import { anthropic, MODEL, FALLBACK_MODEL, SYSTEM_PROMPT } from "./anthropic";
 import { listToolsForAnthropic, callTool } from "./mcp-client";
 import { publishStage } from "./event-bus";
+import { costOf } from "./pricing";
 import type Anthropic from "@anthropic-ai/sdk";
 
 const MAX_STEPS = 20;
@@ -14,6 +15,7 @@ export type AgentEvent =
   | { kind: "text"; delta: string }
   | { kind: "tool_call_start"; id: string; name: string; input: unknown }
   | { kind: "tool_call_end"; id: string; name: string; output: unknown; durationMs: number; error?: string }
+  | { kind: "usage"; model: string; input: number; output: number; cacheCreate: number; cacheRead: number; costUsd: number }
   | { kind: "done" }
   | { kind: "error"; message: string };
 
@@ -73,6 +75,27 @@ export async function* runAgent(
         }
         const final = await stream.finalMessage();
         assistantBlocks = final.content;
+        const u = final.usage as Anthropic.Messages.Usage | undefined;
+        if (u) {
+          const usage = {
+            input_tokens: u.input_tokens ?? 0,
+            output_tokens: u.output_tokens ?? 0,
+            cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0,
+            cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
+          };
+          const costUsd = costOf(currentModel, usage);
+          const ev = {
+            kind: "usage" as const,
+            model: currentModel,
+            input: usage.input_tokens,
+            output: usage.output_tokens,
+            cacheCreate: usage.cache_creation_input_tokens,
+            cacheRead: usage.cache_read_input_tokens,
+            costUsd,
+          };
+          yield ev;
+          await publishStage(sessionId, { ...ev, at: Date.now() });
+        }
       } catch (err: unknown) {
         const status = (err as { status?: number } | null)?.status;
         const message = err instanceof Error ? err.message : String(err);

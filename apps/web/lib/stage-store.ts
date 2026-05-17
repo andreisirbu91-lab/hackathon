@@ -14,11 +14,25 @@ export type ToolCallState = {
 
 export type ArtifactItem = { id: string; type: string; props: unknown; at: number };
 
+export type PlanStep = {
+  id: string;
+  title: string;
+  description?: string;
+  tools?: string[];
+  status: "pending" | "in-progress" | "completed" | "failed";
+};
+export type AgentPlan = {
+  id: string;
+  goal: string;
+  steps: PlanStep[];
+};
+
 export type TabKey = "browser" | "artifact" | "code" | "timeline";
 
 export type StageState = {
   toolCalls: ToolCallState[];
   artifacts: ArtifactItem[];
+  plan: AgentPlan | null;
   activeBrowserUrl?: string;
   activeTab: TabKey;
 };
@@ -27,6 +41,7 @@ export function useStageEvents(sessionId: string | null) {
   const [state, setState] = useState<StageState>({
     toolCalls: [],
     artifacts: [],
+    plan: null,
     activeTab: "timeline",
   });
   const esRef = useRef<EventSource | null>(null);
@@ -59,7 +74,19 @@ function reduce(s: StageState, evt: any): StageState {
       };
       // Always auto-switch on tool start so the audience sees the action live.
       const tab = pickTabFromTool(evt.name) ?? "code";
-      return { ...s, toolCalls: [...s.toolCalls, tc], activeTab: tab };
+      // If a plan is active, mark the next pending step that mentions this tool as in-progress.
+      let plan = s.plan;
+      if (plan && evt.name !== "submit_plan") {
+        const idx = plan.steps.findIndex(
+          (st) => st.status === "pending" && (st.tools?.includes(evt.name) ?? true)
+        );
+        if (idx >= 0) {
+          const steps = plan.steps.slice();
+          steps[idx] = { ...steps[idx], status: "in-progress" };
+          plan = { ...plan, steps };
+        }
+      }
+      return { ...s, toolCalls: [...s.toolCalls, tc], activeTab: tab, plan };
     }
     case "tool_call_end": {
       const toolCalls = s.toolCalls.map((tc) =>
@@ -72,7 +99,25 @@ function reduce(s: StageState, evt: any): StageState {
         const out = evt.output as { url?: string };
         if (out.url) next.activeBrowserUrl = out.url;
       }
+      if (next.plan && evt.name !== "submit_plan") {
+        const idx = next.plan.steps.findIndex(
+          (st) => st.status === "in-progress" && (st.tools?.includes(evt.name) ?? true)
+        );
+        if (idx >= 0) {
+          const steps = next.plan.steps.slice();
+          steps[idx] = { ...steps[idx], status: evt.error ? "failed" : "completed" };
+          next.plan = { ...next.plan, steps };
+        }
+      }
       return next;
+    }
+    case "plan": {
+      const plan: AgentPlan = {
+        id: evt.id,
+        goal: evt.goal,
+        steps: evt.steps.map((s: PlanStep) => ({ ...s, status: s.status ?? "pending" })),
+      };
+      return { ...s, plan, activeTab: "timeline" };
     }
     case "artifact": {
       const item: ArtifactItem = { id: evt.id, type: evt.type, props: evt.props, at: evt.at };

@@ -14,6 +14,7 @@ import {
 } from "./tools/browser.js";
 import { renderArtifact, renderArtifactSchema } from "./tools/render_artifact.js";
 import { dbQuery, dbQuerySchema } from "./tools/db_query.js";
+import { submitPlan, submitPlanSchema } from "./tools/submit_plan.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -21,6 +22,12 @@ function buildServer(): McpServer {
   const server = new McpServer(
     { name: "hackaton-mcp", version: "0.1.0" },
     { capabilities: { tools: {} } }
+  );
+
+  server.tool("submit_plan",
+    "Declare your plan as a list of 1-8 steps BEFORE doing any other tool calls. The user sees this plan on the right pane and watches it complete as you execute. Call this exactly once at the START of every non-trivial turn (skip for one-word answers).",
+    submitPlanSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await submitPlan(args)) }] })
   );
 
   server.tool("web_search",

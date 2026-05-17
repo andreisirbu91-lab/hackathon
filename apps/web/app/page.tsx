@@ -11,9 +11,17 @@ import { cn } from "@/lib/utils";
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Hack A Ton 2026";
 const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA || "local").slice(0, 7);
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
 export default function Page() {
-  const { turns, sessionId, busy, send, stop } = useChat();
+  const { turns, sessionId, busy, send, stop, usage } = useChat();
   const stageEvents = useStageEvents(sessionId);
+  const totalInput = usage.input + usage.cacheCreate + usage.cacheRead;
+  const cacheHit = totalInput > 0 ? Math.round((usage.cacheRead / totalInput) * 100) : 0;
   const [tabOverride, setTabOverride] = useState<TabKey | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "stage">("chat");
 
@@ -35,6 +43,19 @@ export default function Page() {
           <span className="mono-tag hidden sm:inline">JUNE 5-7, 2026 // MAMAIA</span>
         </div>
         <span className="ml-auto flex items-center gap-2 font-mono text-[10px]">
+          {(usage.input > 0 || usage.output > 0) && (
+            <span
+              className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border text-muted/80"
+              title={`${usage.input} in · ${usage.output} out · cache ${usage.cacheRead}/${totalInput} (${cacheHit}%) · ${usage.model}`}
+            >
+              <span className="text-text/80">{formatTokens(totalInput + usage.output)}</span>
+              <span className="opacity-50">tok</span>
+              <span className="opacity-40">·</span>
+              <span className={cacheHit > 50 ? "text-success" : "text-muted/70"}>{cacheHit}% cache</span>
+              <span className="opacity-40">·</span>
+              <span className="text-accent">${usage.costUsd.toFixed(4)}</span>
+            </span>
+          )}
           <span className={cn(
             "px-2 py-0.5 rounded-full border tracking-wider uppercase",
             busy ? "border-accent/50 text-accent bg-accent-soft/30" : "border-border text-muted"

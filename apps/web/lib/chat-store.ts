@@ -15,10 +15,27 @@ export type ChatTurn =
   | { role: "user"; content: string }
   | { role: "assistant"; content: string; toolCalls: ToolCallView[] };
 
+export type UsageTotals = {
+  model: string;
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+  costUsd: number;
+};
+
 export function useChat() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usage, setUsage] = useState<UsageTotals>({
+    model: "",
+    input: 0,
+    output: 0,
+    cacheCreate: 0,
+    cacheRead: 0,
+    costUsd: 0,
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   const send = useCallback(async (text: string) => {
@@ -100,6 +117,15 @@ export function useChat() {
                 }
               : tc
           );
+        } else if (evt.kind === "usage") {
+          setUsage((u) => ({
+            model: evt.model,
+            input: u.input + evt.input,
+            output: u.output + evt.output,
+            cacheCreate: u.cacheCreate + evt.cacheCreate,
+            cacheRead: u.cacheRead + evt.cacheRead,
+            costUsd: u.costUsd + evt.costUsd,
+          }));
         } else if (evt.kind === "error") {
           updated.content += `\n\n_Error: ${evt.message}_`;
         }
@@ -112,5 +138,5 @@ export function useChat() {
     abortRef.current?.abort();
   }, []);
 
-  return { turns, sessionId, busy, send, stop };
+  return { turns, sessionId, busy, send, stop, usage };
 }

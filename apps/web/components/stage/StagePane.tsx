@@ -43,7 +43,7 @@ export function StagePane({
         <TabsContent value="browser" className="flex-1 min-h-0 m-0"><BrowserView activeUrl={state.activeBrowserUrl} /></TabsContent>
         <TabsContent value="artifact" className="flex-1 min-h-0 m-0"><ArtifactView artifacts={state.artifacts} /></TabsContent>
         <TabsContent value="code" className="flex-1 min-h-0 m-0"><CodeView toolCalls={state.toolCalls} /></TabsContent>
-        <TabsContent value="timeline" className="flex-1 min-h-0 m-0"><PlanView toolCalls={state.toolCalls} /></TabsContent>
+        <TabsContent value="timeline" className="flex-1 min-h-0 m-0"><PlanView toolCalls={state.toolCalls} plan={state.plan} /></TabsContent>
       </Tabs>
     </div>
   );
