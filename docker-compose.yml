@@ -25,7 +25,11 @@ services:
     networks: [hackaton]
 
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_BROWSER_VNC_URL: ${NEXT_PUBLIC_BROWSER_VNC_URL:-http://localhost:6080/vnc.html}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Hack A Ton 2026}
     restart: unless-stopped
     depends_on: [redis, mcp]
     ports:

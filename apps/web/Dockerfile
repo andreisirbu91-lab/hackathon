@@ -7,7 +7,11 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_BROWSER_VNC_URL=https://browser.hack.rzs-it.ro/vnc.html
+ARG NEXT_PUBLIC_APP_NAME="Hack A Ton 2026"
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_BROWSER_VNC_URL=$NEXT_PUBLIC_BROWSER_VNC_URL \
+    NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 RUN npm run build
 
 FROM node:20-alpine AS runner
