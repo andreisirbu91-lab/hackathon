@@ -1,11 +1,12 @@
-import { anthropic, MODEL, SYSTEM_PROMPT } from "./anthropic";
+import { anthropic, MODEL, FALLBACK_MODEL, SYSTEM_PROMPT } from "./anthropic";
 import { listToolsForAnthropic, callTool } from "./mcp-client";
 import { publishStage } from "./event-bus";
 import type Anthropic from "@anthropic-ai/sdk";
 
 const MAX_STEPS = 12;
 const MAX_RATE_RETRIES = 4;
-const HISTORY_KEEP_TURNS = 8; // last N user/assistant turns sent to the model
+const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model
+const MAX_TOKENS = 2048;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -43,16 +44,21 @@ export async function* runAgent(
     content: m.content,
   }));
 
+  // Per-turn model selection: try MODEL first; on 429 fall back to FALLBACK_MODEL
+  // for this turn only. Next turn starts back with MODEL so we recover automatically
+  // when the rate-limit sliding window opens up.
+  let currentModel = MODEL;
+
   for (let step = 0; step < MAX_STEPS; step++) {
     let assistantBlocks: Anthropic.Messages.ContentBlock[] | null = null;
-    let attempt = 0;
+    let fellBackThisStep = false;
     let yieldedAny = false;
 
     while (assistantBlocks === null) {
       try {
         const stream = anthropic.messages.stream({
-          model: MODEL,
-          max_tokens: 4096,
+          model: currentModel,
+          max_tokens: MAX_TOKENS,
           system: systemBlocks,
           tools,
           messages,
@@ -72,15 +78,14 @@ export async function* runAgent(
         const message = err instanceof Error ? err.message : String(err);
         const isRateLimit =
           status === 429 || /rate.?limit|429|overloaded|529/i.test(message);
-        const canRetry = isRateLimit && !yieldedAny && attempt < MAX_RATE_RETRIES;
 
-        if (canRetry) {
-          attempt += 1;
-          const waitMs = Math.min(2000 * 2 ** (attempt - 1), 16000);
-          const note = `\n_[rate-limit, retry în ${Math.round(waitMs / 1000)}s — attempt ${attempt}/${MAX_RATE_RETRIES}]_\n`;
+        // Step 1: on rate-limit, try the fallback model IMMEDIATELY (no wait, no retry)
+        if (isRateLimit && !yieldedAny && !fellBackThisStep && currentModel !== FALLBACK_MODEL) {
+          fellBackThisStep = true;
+          currentModel = FALLBACK_MODEL;
+          const note = `\n_[${MODEL} rate-limited, switching to ${FALLBACK_MODEL} for this turn]_\n`;
           yield { kind: "text", delta: note };
           await publishStage(sessionId, { kind: "text", delta: note, at: Date.now() });
-          await new Promise((r) => setTimeout(r, waitMs));
           continue;
         }
 
@@ -89,6 +94,9 @@ export async function* runAgent(
         return;
       }
     }
+
+    // Reset for next step: try the primary model again first
+    currentModel = MODEL;
 
     const toolUses = assistantBlocks.filter(
       (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
