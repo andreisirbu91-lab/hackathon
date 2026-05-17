@@ -21,6 +21,15 @@ import {
   memoryForget, memoryForgetSchema,
 } from "./tools/memory.js";
 import { spawnResearch, spawnResearchSchema } from "./tools/spawn_research.js";
+import { timedTool } from "./observability.js";
+
+function wrap<A>(name: string, fn: (a: A) => Promise<unknown>) {
+  return async (a: A) => {
+    const sessionId = (a as { sessionId?: string } | undefined)?.sessionId;
+    const out = await timedTool(name, sessionId, () => fn(a));
+    return { content: [{ type: "text" as const, text: JSON.stringify(out) }] };
+  };
+}
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -33,79 +42,79 @@ function buildServer(): McpServer {
   server.tool("submit_plan",
     "Declare your plan as a list of 1-8 steps BEFORE doing any other tool calls. The user sees this plan on the right pane and watches it complete as you execute. Call this exactly once at the START of every non-trivial turn (skip for one-word answers).",
     submitPlanSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await submitPlan(args)) }] })
+    wrap("submitPlan", submitPlan)
   );
 
   server.tool("web_search",
     "Search the web using Brave Search. Returns title/url/snippet for each result.",
     webSearchSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await webSearch(args)) }] })
+    wrap("webSearch", webSearch)
   );
 
   server.tool("browser_navigate",
     "Navigate the visible Chromium browser to a URL. Audience sees this happen live on the right pane.",
     navigateSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserNavigate(args)) }] })
+    wrap("browserNavigate", browserNavigate)
   );
 
   server.tool("browser_click",
     "Click an element in the visible browser. Selector may be CSS or text=.",
     clickSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserClick(args)) }] })
+    wrap("browserClick", browserClick)
   );
 
   server.tool("browser_type",
     "Type text into a focused input in the visible browser. Set submit=true to press Enter after.",
     typeSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserType(args)) }] })
+    wrap("browserType", browserType)
   );
 
   server.tool("browser_text",
     "Read the visible text content of the current page (optionally scoped to a CSS selector). Use this to EXTRACT structured data from a page instead of repeatedly taking screenshots. Returns the page text (truncated to maxChars).",
     textSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserText(args)) }] })
+    wrap("browserText", browserText)
   );
 
   server.tool("browser_screenshot",
     "Take a PNG screenshot of the current page and show it to the user on the right pane. The image is NOT included in your context — use browser_text to actually read page content.",
     screenshotSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserScreenshot(args)) }] })
+    wrap("browserScreenshot", browserScreenshot)
   );
 
   server.tool("render_artifact",
     "Render a rich UI artifact on the right pane (chart, table, kanban, map, markdown, iframe). Prefer this over long text responses when the result has structure.",
     renderArtifactSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await renderArtifact(args)) }] })
+    wrap("renderArtifact", renderArtifact)
   );
 
   server.tool("db_query",
     "Run a read-only SQL query against the configured Postgres database. SELECT/WITH only.",
     dbQuerySchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await dbQuery(args)) }] })
+    wrap("dbQuery", dbQuery)
   );
 
   server.tool("memory_save",
     "Persist a short note that survives across sessions. Use for user preferences, learned constraints, recurring facts (e.g. 'preferred-city: Mamaia', 'agent-tone: terse'). Idempotent — same key overwrites.",
     memorySaveSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memorySave(args)) }] })
+    wrap("memorySave", memorySave)
   );
 
   server.tool("memory_recall",
     "Read back persisted memory. Call this early in a session to load relevant context. Pass `query` to filter by substring; omit for everything (capped at 20).",
     memoryRecallSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memoryRecall(args)) }] })
+    wrap("memoryRecall", memoryRecall)
   );
 
   server.tool("spawn_research",
     "Spawn 1-4 parallel sub-agents (Haiku) to research independent questions. Each runs its own web_search + reason loop and returns a <120-word answer. Use this when the user asks 'compare X vs Y' or 'what are the options for Z' — you delegate the legwork in parallel.",
     spawnResearchSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await spawnResearch(args)) }] })
+    wrap("spawnResearch", spawnResearch)
   );
 
   server.tool("memory_forget",
     "Delete a memory by key (e.g. when the user says 'forget that').",
     memoryForgetSchema,
-    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memoryForget(args)) }] })
+    wrap("memoryForget", memoryForget)
   );
 
   return server;

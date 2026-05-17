@@ -68,7 +68,15 @@ async function compactIfNeeded(history: ChatMessage[]): Promise<{
   }
 }
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+type AttachmentLite = {
+  mimeType: string;
+  dataUrl: string;
+};
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  attachments?: AttachmentLite[];
+};
 
 export type AgentEvent =
   | { kind: "text"; delta: string }
@@ -109,10 +117,26 @@ export async function* runAgent(
       at: Date.now(),
     });
   }
-  const messages: Anthropic.Messages.MessageParam[] = compacted.messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  const messages: Anthropic.Messages.MessageParam[] = compacted.messages.map((m) => {
+    if (m.role === "user" && m.attachments && m.attachments.length > 0) {
+      const blocks: Anthropic.Messages.ContentBlockParam[] = [];
+      for (const a of m.attachments) {
+        const match = a.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) continue;
+        blocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: match[1] as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+            data: match[2],
+          },
+        });
+      }
+      if (m.content) blocks.push({ type: "text", text: m.content });
+      return { role: "user" as const, content: blocks };
+    }
+    return { role: m.role, content: m.content };
+  });
 
   // Per-turn model selection: try MODEL first; on 429 fall back to FALLBACK_MODEL
   // for this turn only. Next turn starts back with MODEL so we recover automatically

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
+import type { Attachment } from "./attachments";
 
 export type ToolCallView = {
   id: string;
@@ -12,7 +13,7 @@ export type ToolCallView = {
 };
 
 export type ChatTurn =
-  | { role: "user"; content: string }
+  | { role: "user"; content: string; attachments?: Attachment[] }
   | { role: "assistant"; content: string; thinking: string; toolCalls: ToolCallView[] };
 
 export type UsageTotals = {
@@ -38,18 +39,19 @@ export function useChat() {
   });
   const abortRef = useRef<AbortController | null>(null);
 
-  const send = useCallback(async (text: string) => {
-    if (!text.trim() || busy) return;
+  const send = useCallback(async (text: string, attachments?: Attachment[]) => {
+    if ((!text.trim() && (!attachments || attachments.length === 0)) || busy) return;
 
-    const userTurn: ChatTurn = { role: "user", content: text };
+    const userTurn: ChatTurn = { role: "user", content: text, attachments };
     const assistantTurn: ChatTurn = { role: "assistant", content: "", thinking: "", toolCalls: [] };
     setTurns((t) => [...t, userTurn, assistantTurn]);
     setBusy(true);
 
-    const history = [...turns, userTurn].map((t) => ({
-      role: t.role,
-      content: t.content,
-    }));
+    const history = [...turns, userTurn].map((t) =>
+      t.role === "user"
+        ? { role: t.role, content: t.content, attachments: t.attachments }
+        : { role: t.role, content: t.content }
+    );
 
     const ac = new AbortController();
     abortRef.current = ac;

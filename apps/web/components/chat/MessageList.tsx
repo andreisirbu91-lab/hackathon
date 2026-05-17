@@ -80,8 +80,19 @@ export function MessageList({
       {turns.map((t, i) => (
         <div key={i} className={cn("flex", t.role === "user" ? "justify-end" : "justify-start")}>
           {t.role === "user" ? (
-            <div className="max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 bg-panel border border-border/70 text-[13.5px] text-text whitespace-pre-wrap">
-              {t.content}
+            <div className="max-w-[85%] space-y-1.5">
+              {t.attachments && t.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 justify-end">
+                  {t.attachments.map((a) => (
+                    <img key={a.id} src={a.dataUrl} alt={a.name} className="max-h-32 max-w-[200px] rounded-md border border-border" />
+                  ))}
+                </div>
+              )}
+              {t.content && (
+                <div className="rounded-2xl rounded-br-md px-3.5 py-2 bg-panel border border-border/70 text-[13.5px] text-text whitespace-pre-wrap">
+                  {t.content}
+                </div>
+              )}
             </div>
           ) : (
             <div className="max-w-[92%] w-full space-y-1.5">

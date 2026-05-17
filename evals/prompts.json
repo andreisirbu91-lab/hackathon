@@ -1,0 +1,45 @@
+[
+  {
+    "id": "search-mamaia-restaurants",
+    "prompt": "Caută top 3 restaurante deschise acum în Mamaia. Verifică pe site că sunt deschise, afișează ca tabel.",
+    "expects": {
+      "must_call_tools": ["submit_plan", "web_search"],
+      "should_call_tools": ["browser_navigate", "render_artifact"],
+      "must_not_hallucinate": ["Bouzuki"],
+      "max_steps": 12
+    }
+  },
+  {
+    "id": "render-chart",
+    "prompt": "Generează un grafic line cu 12 puncte fictive de revenue trimestrial pentru un SaaS B2B.",
+    "expects": {
+      "must_call_tools": ["submit_plan", "render_artifact"],
+      "max_steps": 4
+    }
+  },
+  {
+    "id": "extract-spa",
+    "prompt": "Citește hackaton.ambasada.pro și extrage tracks-urile sponsorilor într-un tabel.",
+    "expects": {
+      "must_call_tools": ["submit_plan", "browser_navigate", "browser_text"],
+      "should_handle_gracefully": true,
+      "max_steps": 12
+    }
+  },
+  {
+    "id": "memory-roundtrip",
+    "prompt": "Ține minte că mă cheamă Andrei și prefer răspunsuri terse în română.",
+    "expects": {
+      "must_call_tools": ["memory_save"],
+      "max_steps": 3
+    }
+  },
+  {
+    "id": "trivial-greeting",
+    "prompt": "Salut",
+    "expects": {
+      "must_not_call_tools": ["submit_plan", "web_search"],
+      "max_steps": 1
+    }
+  }
+]
