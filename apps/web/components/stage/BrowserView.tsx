@@ -21,7 +21,6 @@ export function BrowserView({ activeUrl }: { activeUrl?: string }) {
         src={src}
         className="flex-1 w-full border-0"
         title="Agent browser (noVNC)"
-        sandbox="allow-scripts allow-same-origin"
       />
     </div>
   );

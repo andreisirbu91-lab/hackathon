@@ -9,6 +9,7 @@ import {
   browserNavigate, navigateSchema,
   browserClick, clickSchema,
   browserType, typeSchema,
+  browserText, textSchema,
   browserScreenshot, screenshotSchema,
 } from "./tools/browser.js";
 import { renderArtifact, renderArtifactSchema } from "./tools/render_artifact.js";
@@ -46,8 +47,14 @@ function buildServer(): McpServer {
     async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserType(args)) }] })
   );
 
+  server.tool("browser_text",
+    "Read the visible text content of the current page (optionally scoped to a CSS selector). Use this to EXTRACT structured data from a page instead of repeatedly taking screenshots. Returns the page text (truncated to maxChars).",
+    textSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserText(args)) }] })
+  );
+
   server.tool("browser_screenshot",
-    "Take a PNG screenshot of the current page. Returns a data URL.",
+    "Take a PNG screenshot of the current page and show it to the user on the right pane. The image is NOT included in your context — use browser_text to actually read page content.",
     screenshotSchema,
     async (args) => ({ content: [{ type: "text", text: JSON.stringify(await browserScreenshot(args)) }] })
   );

@@ -40,6 +40,33 @@ export async function browserType(args: { sessionId?: string; selector: string; 
   return { ok: true, url: page.url() };
 }
 
+export const textSchema = {
+  sessionId: z.string().optional(),
+  selector: z.string().optional().describe("Optional CSS selector to scope to a section"),
+  maxChars: z.number().int().min(100).max(20000).default(8000),
+};
+export async function browserText(args: { sessionId?: string; selector?: string; maxChars?: number }) {
+  const page = await getPage();
+  const max = args.maxChars ?? 8000;
+  const text = await page.evaluate((sel: string | null) => {
+    const root = sel ? document.querySelector(sel) : document.body;
+    if (!root) return "";
+    const clone = root.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("script,style,noscript").forEach((el) => el.remove());
+    return clone.innerText || "";
+  }, args.selector ?? null);
+  const url = page.url();
+  const title = await page.title();
+  const trimmed = text.replace(/\n{3,}/g, "\n\n").trim();
+  return {
+    url,
+    title,
+    chars: trimmed.length,
+    text: trimmed.slice(0, max),
+    truncated: trimmed.length > max,
+  };
+}
+
 export const screenshotSchema = {
   sessionId: z.string().optional(),
   fullPage: z.boolean().default(false),

@@ -9,7 +9,7 @@ import { MessageSquare, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Hack A Ton 2026";
-const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA ?? "local").slice(0, 7);
+const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA || "local").slice(0, 7);
 
 export default function Page() {
   const { turns, sessionId, busy, send, stop } = useChat();
