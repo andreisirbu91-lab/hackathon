@@ -4,7 +4,7 @@ import { Globe, LayoutDashboard, Code2, ListChecks } from "lucide-react";
 import { BrowserView } from "./BrowserView";
 import { ArtifactView } from "./ArtifactView";
 import { CodeView } from "./CodeView";
-import { Timeline } from "./Timeline";
+import { PlanView } from "./PlanView";
 import type { StageState, TabKey } from "@/lib/stage-store";
 
 export function StagePane({
@@ -32,7 +32,7 @@ export function StagePane({
             </TabsTrigger>
             <TabsTrigger value="code"><Code2 className="w-3.5 h-3.5 mr-1.5" />Code</TabsTrigger>
             <TabsTrigger value="timeline">
-              <ListChecks className="w-3.5 h-3.5 mr-1.5" />Timeline
+              <ListChecks className="w-3.5 h-3.5 mr-1.5" />Plan
               {state.toolCalls.length > 0 && (
                 <span className="ml-1.5 text-[10px] bg-border text-muted px-1 rounded">{state.toolCalls.length}</span>
               )}
@@ -43,7 +43,7 @@ export function StagePane({
         <TabsContent value="browser" className="flex-1 min-h-0 m-0"><BrowserView activeUrl={state.activeBrowserUrl} /></TabsContent>
         <TabsContent value="artifact" className="flex-1 min-h-0 m-0"><ArtifactView artifacts={state.artifacts} /></TabsContent>
         <TabsContent value="code" className="flex-1 min-h-0 m-0"><CodeView toolCalls={state.toolCalls} /></TabsContent>
-        <TabsContent value="timeline" className="flex-1 min-h-0 m-0"><Timeline toolCalls={state.toolCalls} /></TabsContent>
+        <TabsContent value="timeline" className="flex-1 min-h-0 m-0"><PlanView toolCalls={state.toolCalls} /></TabsContent>
       </Tabs>
     </div>
   );
