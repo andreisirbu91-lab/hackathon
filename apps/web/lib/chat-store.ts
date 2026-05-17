@@ -13,7 +13,7 @@ export type ToolCallView = {
 
 export type ChatTurn =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; toolCalls: ToolCallView[] };
+  | { role: "assistant"; content: string; thinking: string; toolCalls: ToolCallView[] };
 
 export type UsageTotals = {
   model: string;
@@ -42,7 +42,7 @@ export function useChat() {
     if (!text.trim() || busy) return;
 
     const userTurn: ChatTurn = { role: "user", content: text };
-    const assistantTurn: ChatTurn = { role: "assistant", content: "", toolCalls: [] };
+    const assistantTurn: ChatTurn = { role: "assistant", content: "", thinking: "", toolCalls: [] };
     setTurns((t) => [...t, userTurn, assistantTurn]);
     setBusy(true);
 
@@ -100,6 +100,8 @@ export function useChat() {
         const updated = { ...last };
         if (evt.kind === "text") {
           updated.content += evt.delta;
+        } else if (evt.kind === "thinking") {
+          updated.thinking += evt.delta;
         } else if (evt.kind === "tool_call_start") {
           updated.toolCalls = [
             ...updated.toolCalls,

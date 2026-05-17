@@ -1,10 +1,33 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Loader2, Wrench } from "lucide-react";
+import { Loader2, Wrench, Brain, ChevronRight } from "lucide-react";
 import type { ChatTurn } from "@/lib/chat-store";
 import { cn } from "@/lib/utils";
+
+function ThinkingPanel({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+  return (
+    <div className="rounded-md border border-border bg-panel/40 text-[12px]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left text-muted hover:text-text transition"
+      >
+        <ChevronRight className={cn("w-3 h-3 transition-transform", open && "rotate-90")} />
+        <Brain className="w-3 h-3 text-accent" />
+        <span className="font-mono text-[11px] tracking-wide">thinking</span>
+        <span className="ml-auto text-[10px] opacity-60">{text.length} chars</span>
+      </button>
+      {open && (
+        <div className="px-2.5 pb-2 pt-1 border-t border-border/70 text-[12px] text-muted/90 font-mono whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STARTER_PROMPTS = [
   "Caută top 3 restaurante deschise acum în Mamaia. Verifică pe site că sunt deschise, afișează ca tabel.",
@@ -61,7 +84,8 @@ export function MessageList({
               {t.content}
             </div>
           ) : (
-            <div className="max-w-[92%] w-full space-y-1">
+            <div className="max-w-[92%] w-full space-y-1.5">
+              {t.thinking && <ThinkingPanel text={t.thinking} />}
               {/* Quiet ticker showing tool activity — full detail lives in the Plan tab */}
               {t.toolCalls.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted/70 font-mono">

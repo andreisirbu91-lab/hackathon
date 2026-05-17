@@ -7,12 +7,16 @@ import type Anthropic from "@anthropic-ai/sdk";
 const MAX_STEPS = 20;
 const MAX_RATE_RETRIES = 4;
 const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model
-const MAX_TOKENS = 2048;
+const MAX_TOKENS = 4096;
+// Extended Thinking: model deliberates before responding. Budget is included in
+// max_tokens. Disabled when 0. Modest default keeps cost ~+15% on Sonnet.
+const THINKING_BUDGET = Number(process.env.ANTHROPIC_THINKING_BUDGET ?? "2048");
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type AgentEvent =
   | { kind: "text"; delta: string }
+  | { kind: "thinking"; delta: string }
   | { kind: "tool_call_start"; id: string; name: string; input: unknown }
   | { kind: "tool_call_end"; id: string; name: string; output: unknown; durationMs: number; error?: string }
   | { kind: "usage"; model: string; input: number; output: number; cacheCreate: number; cacheRead: number; costUsd: number }
@@ -61,16 +65,26 @@ export async function* runAgent(
         const stream = anthropic.messages.stream({
           model: currentModel,
           max_tokens: MAX_TOKENS,
+          ...(THINKING_BUDGET > 0
+            ? { thinking: { type: "enabled" as const, budget_tokens: THINKING_BUDGET } }
+            : {}),
           system: systemBlocks,
           tools,
           messages,
         });
         for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            const delta = event.delta.text;
-            yieldedAny = true;
-            yield { kind: "text", delta };
-            await publishStage(sessionId, { kind: "text", delta, at: Date.now() });
+          if (event.type === "content_block_delta") {
+            if (event.delta.type === "text_delta") {
+              const delta = event.delta.text;
+              yieldedAny = true;
+              yield { kind: "text", delta };
+              await publishStage(sessionId, { kind: "text", delta, at: Date.now() });
+            } else if (event.delta.type === "thinking_delta") {
+              const delta = (event.delta as { thinking?: string }).thinking ?? "";
+              if (delta) {
+                yield { kind: "thinking", delta };
+              }
+            }
           }
         }
         const final = await stream.finalMessage();
