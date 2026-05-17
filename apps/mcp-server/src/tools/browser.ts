@@ -47,8 +47,26 @@ export const screenshotSchema = {
 export async function browserScreenshot(args: { sessionId?: string; fullPage?: boolean }) {
   const page = await getPage();
   const buf = await page.screenshot({ fullPage: args.fullPage ?? false, type: "png" });
+  const url = page.url();
+  // CRITICAL: never return the base64 to the model — a single 300KB PNG explodes
+  // the context to ~400k tokens. Instead, publish the screenshot as a markdown
+  // artifact on the right pane so the audience sees it, and return only metadata
+  // to the model.
+  const dataUrl = `data:image/png;base64,${buf.toString("base64")}`;
+  await publishStage(args.sessionId ?? "", {
+    kind: "artifact",
+    id: `shot-${Date.now()}`,
+    type: "markdown",
+    props: {
+      title: `Screenshot: ${url}`,
+      content: `![screenshot](${dataUrl})`,
+    },
+    at: Date.now(),
+  });
   return {
-    url: page.url(),
-    data_url: `data:image/png;base64,${buf.toString("base64")}`,
+    url,
+    bytes: buf.byteLength,
+    rendered_to_stage: true,
+    note: "The screenshot is now visible to the user on the right pane. The image is NOT included in this tool result to keep your context manageable. Continue based on what you can infer from the page URL and prior tool calls.",
   };
 }
