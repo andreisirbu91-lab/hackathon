@@ -3,7 +3,7 @@ import { listToolsForAnthropic, callTool } from "./mcp-client";
 import { publishStage } from "./event-bus";
 import type Anthropic from "@anthropic-ai/sdk";
 
-const MAX_STEPS = 12;
+const MAX_STEPS = 20;
 const MAX_RATE_RETRIES = 4;
 const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model
 const MAX_TOKENS = 2048;

@@ -59,10 +59,10 @@ function ArtifactBody({ artifact }: { artifact: ArtifactT }) {
           <ResponsiveContainer>
             {chartType === "line" ? (
               <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 18%)" />
                 <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={12} />
                 <YAxis stroke="#94a3b8" fontSize={12} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1f2937" }} />
+                <Tooltip contentStyle={{ background: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 18%)" }} />
                 <Legend />
                 {yKeys.map((k, i) => (
                   <Line key={k} type="monotone" dataKey={k} stroke={COLORS[i % COLORS.length]} />
@@ -70,10 +70,10 @@ function ArtifactBody({ artifact }: { artifact: ArtifactT }) {
               </LineChart>
             ) : chartType === "bar" ? (
               <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 18%)" />
                 <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={12} />
                 <YAxis stroke="#94a3b8" fontSize={12} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1f2937" }} />
+                <Tooltip contentStyle={{ background: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 18%)" }} />
                 <Legend />
                 {yKeys.map((k, i) => (
                   <Bar key={k} dataKey={k} fill={COLORS[i % COLORS.length]} />
@@ -81,10 +81,10 @@ function ArtifactBody({ artifact }: { artifact: ArtifactT }) {
               </BarChart>
             ) : chartType === "area" ? (
               <AreaChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 18%)" />
                 <XAxis dataKey={xKey} stroke="#94a3b8" fontSize={12} />
                 <YAxis stroke="#94a3b8" fontSize={12} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1f2937" }} />
+                <Tooltip contentStyle={{ background: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 18%)" }} />
                 <Legend />
                 {yKeys.map((k, i) => (
                   <Area key={k} type="monotone" dataKey={k} fill={COLORS[i % COLORS.length]} stroke={COLORS[i % COLORS.length]} fillOpacity={0.3} />
@@ -95,7 +95,7 @@ function ArtifactBody({ artifact }: { artifact: ArtifactT }) {
                 <Pie data={data} dataKey={yKeys[0]} nameKey={xKey} outerRadius={100} label>
                   {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1f2937" }} />
+                <Tooltip contentStyle={{ background: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 18%)" }} />
                 <Legend />
               </PieChart>
             )}

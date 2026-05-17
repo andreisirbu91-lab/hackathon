@@ -4,16 +4,49 @@
 
 html, body, #__next { height: 100%; }
 body {
-  background: hsl(222 47% 6%);
-  color: hsl(210 40% 96%);
+  background: hsl(0 0% 5%);
+  color: hsl(0 0% 96%);
   font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: hsl(222 30% 22%); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: hsl(0 0% 22%); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 30%); }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* hackaton-style mono caption helper */
+.mono-tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: hsl(0 0% 60%);
+}
+.mono-tag::before { content: "// "; color: hsl(0 0% 35%); }
+
 .prose-chat p { margin: 0.25rem 0; }
-.prose-chat pre { background: hsl(222 30% 14%); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.85rem; }
-.prose-chat code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
-.prose-chat a { color: hsl(199 89% 60%); text-decoration: underline; }
+.prose-chat pre {
+  background: hsl(0 0% 10%);
+  border: 1px solid hsl(0 0% 16%);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+.prose-chat code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: hsl(0 0% 12%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: hsl(350 90% 75%);
+}
+.prose-chat pre code { background: transparent; padding: 0; color: inherit; }
+.prose-chat a { color: hsl(350 90% 70%); text-decoration: underline; text-decoration-color: hsl(350 90% 40%); }
+.prose-chat strong { color: hsl(0 0% 100%); }
+.prose-chat ul, .prose-chat ol { margin: 0.5rem 0 0.5rem 1.25rem; }
+.prose-chat li { margin: 0.15rem 0; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { color: hsl(0 0% 100%); margin: 0.6rem 0 0.3rem; }
+
+/* selection color matches the brand red */
+::selection { background: hsl(350 90% 62% / 0.35); }

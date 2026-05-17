@@ -22,25 +22,26 @@ export default function Page() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-bg overflow-hidden">
-      {/* ── Top bar ──────────────────────────────────────────── */}
-      <header className="shrink-0 h-11 px-4 border-b border-border flex items-center gap-3 bg-bg">
-        <div className="flex items-center gap-2.5">
-          <div className="relative">
-            <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-            <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-accent animate-ping opacity-75" />
+      {/* ── Top bar — Hack A Ton-style ─────────────────────────── */}
+      <header className="shrink-0 h-12 px-4 border-b border-border flex items-center gap-3 bg-bg">
+        <div className="flex items-center gap-2">
+          {/* Hack-A-Ton-ish logo: circle with red dot inside */}
+          <div className="relative w-5 h-5 rounded-full border border-text/80 flex items-center justify-center">
+            <div className="w-2 h-2 rounded-full bg-accent" />
           </div>
-          <h1 className="text-[13px] font-medium text-text tracking-tight">
-            {APP_NAME}
+          <h1 className="text-[13px] font-semibold text-text tracking-tight uppercase">
+            Hack<span className="text-accent">·</span>A<span className="text-accent">·</span>Ton
           </h1>
+          <span className="mono-tag hidden sm:inline">JUNE 5-7, 2026 // MAMAIA</span>
         </div>
-        <span className="text-[11px] text-muted/60 font-mono hidden sm:inline">
-          · agent workstation
-        </span>
-        <span className="ml-auto flex items-center gap-2 text-[10px] text-muted/60 font-mono">
-          <span className={cn("px-1.5 py-0.5 rounded border", busy ? "border-accent/40 text-accent" : "border-border")}>
-            {busy ? "thinking" : "idle"}
+        <span className="ml-auto flex items-center gap-2 font-mono text-[10px]">
+          <span className={cn(
+            "px-2 py-0.5 rounded-full border tracking-wider uppercase",
+            busy ? "border-accent/50 text-accent bg-accent-soft/30" : "border-border text-muted"
+          )}>
+            {busy ? "running" : "ready"}
           </span>
-          <span className="hidden md:inline">build {BUILD_SHA}</span>
+          <span className="hidden md:inline text-muted/70">build {BUILD_SHA}</span>
         </span>
 
         {/* mobile pane toggle */}
