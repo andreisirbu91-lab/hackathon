@@ -49,3 +49,33 @@ body {
 .prose-chat h1, .prose-chat h2, .prose-chat h3 { color: hsl(222 14% 14%); margin: 0.6rem 0 0.3rem; }
 
 ::selection { background: hsl(350 85% 52% / 0.25); }
+
+/* One-shot intro: the whole app coalesces out of a liquid-glass distortion.
+   The SVG <feDisplacementMap> handles the spatial wobble (SMIL animates its
+   scale from 80 -> 0). This CSS keyframe stacks opacity, blur, and a tiny
+   scale fade so the page lands crisp. */
+@keyframes liquid-form {
+  0% {
+    opacity: 0;
+    -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+    transform: scale(1.035);
+  }
+  60% {
+    opacity: 1;
+    -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+    transform: scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    -webkit-backdrop-filter: blur(0);
+            backdrop-filter: blur(0);
+    transform: scale(1);
+  }
+}
+.intro-running { transform-origin: 50% 40%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-running { animation: none !important; filter: none !important; }
+}

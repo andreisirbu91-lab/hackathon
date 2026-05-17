@@ -2,11 +2,14 @@
 import { useEffect, useState } from "react";
 import { ChatPane } from "@/components/chat/ChatPane";
 import { StagePane } from "@/components/stage/StagePane";
+import { Lamp } from "@/components/Lamp";
 import { useChat } from "@/lib/chat-store";
 import { useStageEvents } from "@/lib/stage-store";
 import type { TabKey } from "@/lib/stage-store";
-import { MessageSquare, Sparkles } from "lucide-react";
+import { MessageSquare, Sparkles, Lightbulb, LightbulbOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const LAMP_KEY = "hackaton:lampOn";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Hack A Ton 2026";
 const BUILD_SHA = (process.env.NEXT_PUBLIC_BUILD_SHA || "local").slice(0, 7);
@@ -22,6 +25,24 @@ export default function Page() {
   const stageEvents = useStageEvents(sessionId);
   const [manualTab, setManualTab] = useState<TabKey | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "stage">("chat");
+  const [lampOn, setLampOn] = useState(false);
+
+  // After the liquid-glass intro finishes (~1.5s) light the lamp.
+  // Respects the user's saved preference.
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem(LAMP_KEY) : null;
+    const wantOn = saved === null ? true : saved === "1";
+    if (!wantOn) return;
+    const t = setTimeout(() => setLampOn(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  const toggleLamp = () => {
+    setLampOn((v) => {
+      const next = !v;
+      try { localStorage.setItem(LAMP_KEY, next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
   // When the stage's auto-suggested tab changes (agent did something):
   //   - drop the desktop manual override so the active tab follows the action
   //   - flip the mobile view to "stage" so the user sees what's happening
@@ -43,7 +64,8 @@ export default function Page() {
   const state = { ...stageEvents, activeTab };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-bg overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-bg overflow-hidden relative">
+      <Lamp on={lampOn} />
       {/* ── Top bar — Hack A Ton-style ─────────────────────────── */}
       <header className="shrink-0 h-12 px-4 border-b border-border flex items-center gap-3 bg-bg">
         <div className="flex items-center gap-2">
@@ -76,6 +98,17 @@ export default function Page() {
           )}>
             {busy ? "running" : "ready"}
           </span>
+          <button
+            onClick={toggleLamp}
+            aria-label={lampOn ? "Turn lamp off" : "Turn lamp on"}
+            title={lampOn ? "Lamp on — click to turn off" : "Lamp off — click to turn on"}
+            className={cn(
+              "h-6 w-6 rounded-full flex items-center justify-center transition border",
+              lampOn ? "border-accent text-accent bg-accent-soft/30" : "border-border text-muted hover:text-text"
+            )}
+          >
+            {lampOn ? <Lightbulb className="w-3 h-3" /> : <LightbulbOff className="w-3 h-3" />}
+          </button>
           <span className="hidden md:inline text-muted/70">build {BUILD_SHA}</span>
         </span>
 
