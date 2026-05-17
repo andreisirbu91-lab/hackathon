@@ -74,6 +74,7 @@ export type AgentEvent =
   | { kind: "text"; delta: string }
   | { kind: "thinking"; delta: string }
   | { kind: "tool_call_start"; id: string; name: string; input: unknown }
+  | { kind: "tool_input_delta"; id: string; partial: string }
   | { kind: "tool_call_end"; id: string; name: string; output: unknown; durationMs: number; error?: string }
   | { kind: "usage"; model: string; input: number; output: number; cacheCreate: number; cacheRead: number; costUsd: number }
   | { kind: "done" }
@@ -142,8 +143,32 @@ export async function* runAgent(
           tools,
           messages,
         });
+        // Track in-flight tool_use blocks by index so we can attach their id
+        // to streaming JSON deltas.
+        const toolBlockById = new Map<number, { id: string; name: string }>();
+
         for await (const event of stream) {
-          if (event.type === "content_block_delta") {
+          if (event.type === "content_block_start" && event.content_block.type === "tool_use") {
+            toolBlockById.set(event.index, {
+              id: event.content_block.id,
+              name: event.content_block.name,
+            });
+            // Emit a placeholder start so the UI shows the call immediately;
+            // input will fill in via subsequent input_json_deltas.
+            await publishStage(sessionId, {
+              kind: "tool_call_start",
+              id: event.content_block.id,
+              name: event.content_block.name,
+              input: {},
+              at: Date.now(),
+            });
+            yield {
+              kind: "tool_call_start",
+              id: event.content_block.id,
+              name: event.content_block.name,
+              input: {},
+            };
+          } else if (event.type === "content_block_delta") {
             if (event.delta.type === "text_delta") {
               const delta = event.delta.text;
               yieldedAny = true;
@@ -151,8 +176,13 @@ export async function* runAgent(
               await publishStage(sessionId, { kind: "text", delta, at: Date.now() });
             } else if (event.delta.type === "thinking_delta") {
               const delta = (event.delta as { thinking?: string }).thinking ?? "";
-              if (delta) {
-                yield { kind: "thinking", delta };
+              if (delta) yield { kind: "thinking", delta };
+            } else if (event.delta.type === "input_json_delta") {
+              const partial = (event.delta as { partial_json?: string }).partial_json ?? "";
+              const block = toolBlockById.get(event.index);
+              if (block && partial) {
+                yield { kind: "tool_input_delta", id: block.id, partial };
+                // Don't republish to Redis stream for every delta — too chatty.
               }
             }
           }
@@ -226,7 +256,8 @@ export async function* runAgent(
       const input = tu.input;
       const startedAt = Date.now();
 
-      yield { kind: "tool_call_start", id, name, input };
+      // Stage-store reducer is idempotent on id — re-emitting tool_call_start
+      // with the final parsed input updates the entry's input field.
       await publishStage(sessionId, { kind: "tool_call_start", id, name, input, at: startedAt });
 
       try {

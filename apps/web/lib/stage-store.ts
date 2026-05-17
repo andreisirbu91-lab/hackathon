@@ -65,6 +65,13 @@ export function useStageEvents(sessionId: string | null) {
 function reduce(s: StageState, evt: any): StageState {
   switch (evt.kind) {
     case "tool_call_start": {
+      // Idempotent on id — second emit with full input updates the existing entry.
+      const existingIdx = s.toolCalls.findIndex((t) => t.id === evt.id);
+      if (existingIdx >= 0) {
+        const toolCalls = s.toolCalls.slice();
+        toolCalls[existingIdx] = { ...toolCalls[existingIdx], input: evt.input };
+        return { ...s, toolCalls };
+      }
       const tc: ToolCallState = {
         id: evt.id,
         name: evt.name,
@@ -72,9 +79,7 @@ function reduce(s: StageState, evt: any): StageState {
         startedAt: evt.at,
         status: "running",
       };
-      // Always auto-switch on tool start so the audience sees the action live.
       const tab = pickTabFromTool(evt.name) ?? "code";
-      // If a plan is active, mark the next pending step that mentions this tool as in-progress.
       let plan = s.plan;
       if (plan && evt.name !== "submit_plan") {
         const idx = plan.steps.findIndex(
@@ -87,6 +92,15 @@ function reduce(s: StageState, evt: any): StageState {
         }
       }
       return { ...s, toolCalls: [...s.toolCalls, tc], activeTab: tab, plan };
+    }
+    case "tool_input_delta": {
+      // Accumulate streaming JSON characters into the matching tool call's input.
+      const toolCalls = s.toolCalls.map((tc) => {
+        if (tc.id !== evt.id) return tc;
+        const prev = typeof tc.input === "string" ? tc.input : "";
+        return { ...tc, input: prev + evt.partial };
+      });
+      return { ...s, toolCalls };
     }
     case "tool_call_end": {
       const toolCalls = s.toolCalls.map((tc) =>
