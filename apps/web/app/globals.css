@@ -4,15 +4,15 @@
 
 html, body, #__next { height: 100%; }
 body {
-  background: hsl(0 0% 5%);
-  color: hsl(0 0% 96%);
+  background: hsl(40 30% 99%);
+  color: hsl(222 14% 14%);
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: hsl(0 0% 22%); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 30%); }
+::-webkit-scrollbar-thumb { background: hsl(40 10% 80%); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(40 10% 70%); }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* hackaton-style mono caption helper */
@@ -20,14 +20,14 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   letter-spacing: 0.02em;
-  color: hsl(0 0% 60%);
+  color: hsl(222 8% 45%);
 }
-.mono-tag::before { content: "// "; color: hsl(0 0% 35%); }
+.mono-tag::before { content: "// "; color: hsl(222 8% 65%); }
 
 .prose-chat p { margin: 0.25rem 0; }
 .prose-chat pre {
-  background: hsl(0 0% 10%);
-  border: 1px solid hsl(0 0% 16%);
+  background: hsl(40 18% 94%);
+  border: 1px solid hsl(40 10% 86%);
   padding: 0.75rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -36,17 +36,16 @@ body {
 .prose-chat code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85em;
-  background: hsl(0 0% 12%);
-  padding: 1px 4px;
+  background: hsl(40 18% 94%);
+  padding: 1px 5px;
   border-radius: 3px;
-  color: hsl(350 90% 75%);
+  color: hsl(350 85% 42%);
 }
 .prose-chat pre code { background: transparent; padding: 0; color: inherit; }
-.prose-chat a { color: hsl(350 90% 70%); text-decoration: underline; text-decoration-color: hsl(350 90% 40%); }
-.prose-chat strong { color: hsl(0 0% 100%); }
+.prose-chat a { color: hsl(350 85% 45%); text-decoration: underline; text-decoration-color: hsl(350 85% 75%); }
+.prose-chat strong { color: hsl(222 14% 14%); }
 .prose-chat ul, .prose-chat ol { margin: 0.5rem 0 0.5rem 1.25rem; }
 .prose-chat li { margin: 0.15rem 0; }
-.prose-chat h1, .prose-chat h2, .prose-chat h3 { color: hsl(0 0% 100%); margin: 0.6rem 0 0.3rem; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { color: hsl(222 14% 14%); margin: 0.6rem 0 0.3rem; }
 
-/* selection color matches the brand red */
-::selection { background: hsl(350 90% 62% / 0.35); }
+::selection { background: hsl(350 85% 52% / 0.25); }
