@@ -2,8 +2,8 @@
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Loader2, Wrench } from "lucide-react";
 import type { ChatTurn } from "@/lib/chat-store";
-import { ToolCallBubble } from "./ToolCallBubble";
 import { cn } from "@/lib/utils";
 
 const STARTER_PROMPTS = [
@@ -61,10 +61,35 @@ export function MessageList({
               {t.content}
             </div>
           ) : (
-            <div className="max-w-[92%] w-full space-y-1.5">
-              {t.toolCalls.map((tc) => (
-                <ToolCallBubble key={tc.id} tc={tc} />
-              ))}
+            <div className="max-w-[92%] w-full space-y-1">
+              {/* Quiet ticker showing tool activity — full detail lives in the Plan tab */}
+              {t.toolCalls.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted/70 font-mono">
+                  <Wrench className="w-3 h-3" />
+                  {t.toolCalls.slice(-6).map((tc) => {
+                    const running = tc.status === "running";
+                    return (
+                      <span
+                        key={tc.id}
+                        className={cn(
+                          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded border",
+                          running
+                            ? "border-accent/40 text-accent"
+                            : tc.status === "error"
+                            ? "border-danger/40 text-danger"
+                            : "border-border text-muted"
+                        )}
+                      >
+                        {running && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                        {tc.name}
+                      </span>
+                    );
+                  })}
+                  {t.toolCalls.length > 6 && (
+                    <span className="opacity-60">+{t.toolCalls.length - 6} more</span>
+                  )}
+                </div>
+              )}
               {t.content && (
                 <div className="prose-chat text-[13.5px] text-text leading-relaxed px-1">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.content}</ReactMarkdown>

@@ -16,8 +16,8 @@ export function ChatPane({
   onStop: () => void;
 }) {
   return (
-    <div className="flex flex-col h-full w-full min-h-0 bg-bg">
-      <ScrollArea className="flex-1 min-h-0">
+    <div className="flex flex-col h-full w-full min-w-0 min-h-0 bg-bg overflow-hidden">
+      <ScrollArea className="flex-1 min-h-0 min-w-0">
         <MessageList turns={turns} onPick={onSend} />
       </ScrollArea>
       <Composer onSend={onSend} onStop={onStop} busy={busy} />
