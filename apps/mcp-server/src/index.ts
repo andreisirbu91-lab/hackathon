@@ -11,6 +11,8 @@ import {
   browserType, typeSchema,
   browserText, textSchema,
   browserScreenshot, screenshotSchema,
+  browserEval, evalSchema,
+  browserClickAt, clickAtSchema,
 } from "./tools/browser.js";
 import { renderArtifact, renderArtifactSchema } from "./tools/render_artifact.js";
 import { dbQuery, dbQuerySchema } from "./tools/db_query.js";
@@ -79,6 +81,18 @@ function buildServer(): McpServer {
     "Take a PNG screenshot of the current page and show it to the user on the right pane. The image is NOT included in your context — use browser_text to actually read page content.",
     screenshotSchema,
     wrap("browserScreenshot", browserScreenshot)
+  );
+
+  server.tool("browser_eval",
+    "Run arbitrary JS inside the page and get the JSON-serialized return value. Use when selectors are unreliable: 'document.querySelectorAll(\"article h2\").length', 'document.querySelector(\".price\").innerText', etc. Result is bounded by JSON serialization.",
+    evalSchema,
+    wrap("browserEval", browserEval)
+  );
+
+  server.tool("browser_click_at",
+    "Click at pixel coordinates inside the viewport (escape hatch when CSS selectors fail). Default button is left.",
+    clickAtSchema,
+    wrap("browserClickAt", browserClickAt)
   );
 
   server.tool("render_artifact",

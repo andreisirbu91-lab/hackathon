@@ -40,6 +40,46 @@ export async function browserType(args: { sessionId?: string; selector: string; 
   return { ok: true, url: page.url() };
 }
 
+export const evalSchema = {
+  sessionId: z.string().optional(),
+  expression: z
+    .string()
+    .describe("Arbitrary JS expression evaluated in the page context. Return value is serialized to JSON. Use for: extracting data from SPAs, clicking elements that lack stable selectors, simulating user actions when selectors fail."),
+};
+export async function browserEval(args: { sessionId?: string; expression: string }) {
+  const page = await getPage();
+  try {
+    const result = await page.evaluate(
+      (expr: string) => {
+        try {
+          // eslint-disable-next-line no-new-func
+          const fn = new Function(`return (${expr})`);
+          return { ok: true, value: fn() };
+        } catch (e) {
+          return { ok: false, error: (e as Error).message };
+        }
+      },
+      args.expression
+    );
+    return { url: page.url(), ...result };
+  } catch (e) {
+    return { url: page.url(), ok: false, error: (e as Error).message };
+  }
+}
+
+export const clickAtSchema = {
+  sessionId: z.string().optional(),
+  x: z.number().int().min(0).describe("Pixel X coordinate from viewport top-left"),
+  y: z.number().int().min(0).describe("Pixel Y coordinate from viewport top-left"),
+  button: z.enum(["left", "right", "middle"]).default("left"),
+};
+export async function browserClickAt(args: { sessionId?: string; x: number; y: number; button?: "left" | "right" | "middle" }) {
+  const page = await getPage();
+  await page.mouse.click(args.x, args.y, { button: args.button ?? "left" });
+  await publishStage(args.sessionId ?? "", { kind: "browser", action: `click@${args.x},${args.y}`, at: Date.now() });
+  return { ok: true, url: page.url() };
+}
+
 export const textSchema = {
   sessionId: z.string().optional(),
   selector: z.string().optional().describe("Optional CSS selector to scope to a section"),
