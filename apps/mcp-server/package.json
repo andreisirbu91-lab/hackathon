@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.1",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "express": "^4.21.2",
     "ioredis": "^5.4.2",

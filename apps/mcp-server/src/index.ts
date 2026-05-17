@@ -20,6 +20,7 @@ import {
   memoryRecall, memoryRecallSchema,
   memoryForget, memoryForgetSchema,
 } from "./tools/memory.js";
+import { spawnResearch, spawnResearchSchema } from "./tools/spawn_research.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -93,6 +94,12 @@ function buildServer(): McpServer {
     "Read back persisted memory. Call this early in a session to load relevant context. Pass `query` to filter by substring; omit for everything (capped at 20).",
     memoryRecallSchema,
     async (args) => ({ content: [{ type: "text", text: JSON.stringify(await memoryRecall(args)) }] })
+  );
+
+  server.tool("spawn_research",
+    "Spawn 1-4 parallel sub-agents (Haiku) to research independent questions. Each runs its own web_search + reason loop and returns a <120-word answer. Use this when the user asks 'compare X vs Y' or 'what are the options for Z' — you delegate the legwork in parallel.",
+    spawnResearchSchema,
+    async (args) => ({ content: [{ type: "text", text: JSON.stringify(await spawnResearch(args)) }] })
   );
 
   server.tool("memory_forget",
