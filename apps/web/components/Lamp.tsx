@@ -23,7 +23,7 @@ export function Lamp({ on }: { on: boolean }) {
           <div className="absolute left-[18%] top-0 w-1.5 h-2.5 bg-gradient-to-b from-zinc-500 to-zinc-700 rounded-b-sm" />
           <div className="absolute right-[18%] top-0 w-1.5 h-2.5 bg-gradient-to-b from-zinc-500 to-zinc-700 rounded-b-sm" />
         </div>
-        {/* Neon tube — cold white light */}
+        {/* Neon tube — white-hot core, cyan halo (classic LED look) */}
         <div
           className={cn(
             "relative h-[7px] rounded-full mx-[10%] transition-all duration-500",
@@ -32,12 +32,16 @@ export function Lamp({ on }: { on: boolean }) {
           style={{
             boxShadow: on
               ? [
-                  "0 0 4px hsl(0 0% 100%)",
-                  "0 0 14px hsl(0 0% 100% / 0.95)",
-                  "0 0 48px hsl(210 30% 95% / 0.85)",
-                  "0 0 110px hsl(210 30% 92% / 0.6)",
-                  "0 0 200px hsl(210 30% 92% / 0.35)",
-                  "0 16px 140px hsl(210 30% 95% / 0.5)",
+                  // tight white inner shell
+                  "0 0 3px hsl(0 0% 100%)",
+                  "0 0 10px hsl(190 95% 90% / 0.95)",
+                  // cyan halos broadening outward
+                  "0 0 28px hsl(190 100% 65% / 0.85)",
+                  "0 0 70px hsl(190 100% 55% / 0.65)",
+                  "0 0 160px hsl(190 100% 50% / 0.35)",
+                  // downward bloom that lights the page
+                  "0 18px 120px hsl(190 100% 55% / 0.5)",
+                  // inner highlight so the tube reads as glass
                   "inset 0 0 6px hsl(0 0% 100%)",
                 ].join(",")
               : "inset 0 0 2px rgba(0,0,0,0.25)",
@@ -54,21 +58,21 @@ export function Lamp({ on }: { on: boolean }) {
         )}
         style={{ height: "100vh" }}
       >
-        {/* Hot core right under the tube */}
+        {/* Hot white core right under the tube */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-0 w-[70vw] h-[55vh]"
+          className="absolute left-1/2 -translate-x-1/2 top-0 w-[70vw] h-[45vh]"
           style={{
             background:
-              "radial-gradient(ellipse 60% 100% at 50% 0%, hsl(0 0% 100% / 0.55), hsl(0 0% 100% / 0.18) 35%, transparent 75%)",
+              "radial-gradient(ellipse 55% 100% at 50% 0%, hsl(0 0% 100% / 0.5), hsl(190 80% 90% / 0.2) 35%, transparent 75%)",
             mixBlendMode: "screen",
           }}
         />
-        {/* Wider ambient spill */}
+        {/* Cyan ambient wash that fades down the page */}
         <div
           className="absolute inset-x-0 top-0 h-full"
           style={{
             background:
-              "radial-gradient(ellipse 80% 80% at 50% -5%, hsl(210 25% 96% / 0.35), hsl(210 25% 96% / 0.1) 40%, transparent 75%)",
+              "radial-gradient(ellipse 90% 90% at 50% -10%, hsl(190 100% 60% / 0.32), hsl(190 100% 55% / 0.12) 35%, transparent 75%)",
             mixBlendMode: "screen",
           }}
         />
