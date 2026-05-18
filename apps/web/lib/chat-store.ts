@@ -25,9 +25,24 @@ export type UsageTotals = {
   costUsd: number;
 };
 
+function initialSessionId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const existing = sessionStorage.getItem("hk:session");
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    sessionStorage.setItem("hk:session", id);
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
 export function useChat() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  // Generated client-side so /api/events can subscribe BEFORE the first send
+  // (Redis pub/sub doesn't queue — late subscribers miss the agent's events).
+  const [sessionId, setSessionId] = useState<string>(() => initialSessionId());
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<UsageTotals>({
     model: "",
@@ -93,7 +108,8 @@ export function useChat() {
 
     function handleEvent(evt: any) {
       if (evt.kind === "session") {
-        setSessionId(evt.sessionId);
+        // Server may echo back the same sessionId — keep ours unless empty.
+        if (!sessionId) setSessionId(evt.sessionId);
         return;
       }
       setTurns((curr) => {
