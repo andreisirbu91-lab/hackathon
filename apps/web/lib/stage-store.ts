@@ -34,6 +34,7 @@ export type StageState = {
   artifacts: ArtifactItem[];
   plan: AgentPlan | null;
   activeBrowserUrl?: string;
+  browserLoading: boolean;
   activeTab: TabKey;
 };
 
@@ -42,6 +43,7 @@ export function useStageEvents(sessionId: string | null) {
     toolCalls: [],
     artifacts: [],
     plan: null,
+    browserLoading: false,
     activeTab: "timeline",
   });
   const esRef = useRef<EventSource | null>(null);
@@ -102,6 +104,13 @@ function reduce(s: StageState, evt: any): StageState {
       });
       return { ...s, toolCalls };
     }
+    case "tool_call_input_resolved": {
+      // Server has the final parsed input — overwrite the streaming accumulator.
+      const toolCalls = s.toolCalls.map((tc) =>
+        tc.id === evt.id ? { ...tc, input: evt.input } : tc
+      );
+      return { ...s, toolCalls };
+    }
     case "tool_call_end": {
       const toolCalls = s.toolCalls.map((tc) =>
         tc.id === evt.id
@@ -138,7 +147,29 @@ function reduce(s: StageState, evt: any): StageState {
       return { ...s, artifacts: [...s.artifacts, item], activeTab: "artifact" };
     }
     case "browser": {
-      return { ...s, activeBrowserUrl: evt.url ?? s.activeBrowserUrl, activeTab: "browser" };
+      const action = evt.action as string;
+      if (action === "navigating") {
+        return {
+          ...s,
+          activeBrowserUrl: evt.url ?? s.activeBrowserUrl,
+          browserLoading: true,
+          activeTab: "browser",
+        };
+      }
+      if (action === "ready") {
+        return {
+          ...s,
+          activeBrowserUrl: evt.url ?? s.activeBrowserUrl,
+          browserLoading: false,
+          activeTab: "browser",
+        };
+      }
+      // legacy "navigate" / "click" / "type"
+      return {
+        ...s,
+        activeBrowserUrl: evt.url ?? s.activeBrowserUrl,
+        activeTab: "browser",
+      };
     }
     default:
       return s;

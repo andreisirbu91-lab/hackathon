@@ -6,13 +6,13 @@ import type Anthropic from "@anthropic-ai/sdk";
 
 const MAX_STEPS = 20;
 const MAX_RATE_RETRIES = 4;
-const HISTORY_KEEP_TURNS = 4; // last N user/assistant turns sent to the model verbatim
+const HISTORY_KEEP_TURNS = 8; // last N user/assistant turns sent to the model verbatim
 const MAX_TOKENS = 4096;
 const THINKING_BUDGET = Number(process.env.ANTHROPIC_THINKING_BUDGET ?? "2048");
 
 // When estimated input tokens of the trimmed history exceed this, run a
 // summarization pass on the dropped tail and prepend the summary as context.
-const COMPACTION_THRESHOLD_TOKENS = 4000;
+const COMPACTION_THRESHOLD_TOKENS = 10000;
 const COMPACTION_MODEL = process.env.ANTHROPIC_COMPACTION_MODEL ?? "claude-haiku-4-5";
 
 // Per-turn budget. If a single turn's tool-use loop exceeds this many USD,
@@ -280,9 +280,10 @@ export async function* runAgent(
       const input = tu.input;
       const startedAt = Date.now();
 
-      // Stage-store reducer is idempotent on id — re-emitting tool_call_start
-      // with the final parsed input updates the entry's input field.
-      await publishStage(sessionId, { kind: "tool_call_start", id, name, input, at: startedAt });
+      // Stream already emitted `tool_call_start` with empty input. Now publish
+      // the resolved input as a DISTINCT event so the reducer has clean
+      // semantics (no double-add race).
+      await publishStage(sessionId, { kind: "tool_call_input_resolved", id, input, at: startedAt });
 
       try {
         // Inject the real sessionId server-side so MCP tools always reach the

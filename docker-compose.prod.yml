@@ -51,7 +51,7 @@ services:
       BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
       SUPABASE_DB_URL: postgresql://hackaton:${POSTGRES_PASSWORD}@hackaton-postgres:5432/hackaton
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      ANTHROPIC_SUBAGENT_MODEL: ${ANTHROPIC_SUBAGENT_MODEL:-claude-haiku-4-5}
+      ANTHROPIC_SUBAGENT_MODEL: ${ANTHROPIC_SUBAGENT_MODEL:-claude-sonnet-4-6}
 
   web:
     image: ghcr.io/andreisirbu91-lab/hackathon-web:latest

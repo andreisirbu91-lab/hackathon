@@ -14,9 +14,10 @@ export function subscriber() {
 
 export type StageEvent =
   | { kind: "tool_call_start"; id: string; name: string; input: unknown; at: number }
+  | { kind: "tool_call_input_resolved"; id: string; input: unknown; at: number }
   | { kind: "tool_call_end"; id: string; name: string; output: unknown; durationMs: number; error?: string; at: number }
   | { kind: "artifact"; id: string; type: string; props: unknown; at: number }
-  | { kind: "browser"; action: string; url?: string; at: number }
+  | { kind: "browser"; action: string; url?: string; title?: string; at: number }
   | { kind: "text"; delta: string; at: number }
   | { kind: "usage"; model: string; input: number; output: number; cacheCreate: number; cacheRead: number; costUsd: number; at: number }
   | { kind: "done"; at: number }

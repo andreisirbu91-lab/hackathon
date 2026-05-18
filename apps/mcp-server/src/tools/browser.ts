@@ -8,10 +8,14 @@ export const navigateSchema = {
 };
 export async function browserNavigate(args: { sessionId?: string; url: string }) {
   const page = await getPage();
+  const sid = args.sessionId ?? "";
+  // Tell the UI we're starting — so it can show a loading overlay BEFORE the
+  // page navigation actually resolves (which can take seconds).
+  await publishStage(sid, { kind: "browser", action: "navigating", url: args.url, at: Date.now() });
   await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
   const title = await page.title();
   const finalUrl = page.url();
-  await publishStage(args.sessionId ?? "", { kind: "browser", action: "navigate", url: finalUrl, at: Date.now() });
+  await publishStage(sid, { kind: "browser", action: "ready", url: finalUrl, title, at: Date.now() });
   return { url: finalUrl, title };
 }
 
@@ -88,22 +92,41 @@ export const textSchema = {
 export async function browserText(args: { sessionId?: string; selector?: string; maxChars?: number }) {
   const page = await getPage();
   const max = args.maxChars ?? 8000;
-  const text = await page.evaluate((sel: string | null) => {
-    const root = sel ? document.querySelector(sel) : document.body;
-    if (!root) return "";
-    const clone = root.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("script,style,noscript").forEach((el) => el.remove());
-    return clone.innerText || "";
-  }, args.selector ?? null);
-  const url = page.url();
+  const baseUrl = page.url();
+  const { text, links } = await page.evaluate(
+    ({ sel, base }: { sel: string | null; base: string }) => {
+      const root = sel ? document.querySelector(sel) : document.body;
+      if (!root) return { text: "", links: [] as { url: string; text: string }[] };
+      const clone = root.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll("script,style,noscript").forEach((el) => el.remove());
+      // Extract up to 30 distinct hrefs from the root scope
+      const seen = new Set<string>();
+      const links: { url: string; text: string }[] = [];
+      for (const a of Array.from(clone.querySelectorAll("a[href]"))) {
+        const href = (a as HTMLAnchorElement).getAttribute("href") ?? "";
+        if (!href || href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("mailto:")) continue;
+        let abs = href;
+        try { abs = new URL(href, base).toString(); } catch { continue; }
+        if (seen.has(abs)) continue;
+        seen.add(abs);
+        const t = ((a as HTMLAnchorElement).textContent ?? "").trim().slice(0, 80);
+        if (!t) continue;
+        links.push({ url: abs, text: t });
+        if (links.length >= 30) break;
+      }
+      return { text: (clone as HTMLElement).innerText || "", links };
+    },
+    { sel: args.selector ?? null, base: baseUrl }
+  );
   const title = await page.title();
   const trimmed = text.replace(/\n{3,}/g, "\n\n").trim();
   return {
-    url,
+    url: baseUrl,
     title,
     chars: trimmed.length,
     text: trimmed.slice(0, max),
     truncated: trimmed.length > max,
+    links,
   };
 }
 

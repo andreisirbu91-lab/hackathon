@@ -23,6 +23,7 @@ import {
   memoryForget, memoryForgetSchema,
 } from "./tools/memory.js";
 import { spawnResearch, spawnResearchSchema } from "./tools/spawn_research.js";
+import { browserFetch, browserFetchSchema } from "./tools/browser_fetch.js";
 import { timedTool } from "./observability.js";
 
 function wrap<A>(name: string, fn: (a: A) => Promise<unknown>) {
@@ -81,6 +82,12 @@ function buildServer(): McpServer {
     "Take a PNG screenshot of the current page and show it to the user on the right pane. The image is NOT included in your context — use browser_text to actually read page content.",
     screenshotSchema,
     wrap("browserScreenshot", browserScreenshot)
+  );
+
+  server.tool("browser_fetch",
+    "Fetch and extract clean readable markdown from a URL using HTTP + Readability — does NOT touch the visible browser. Faster than browser_navigate for reading sources in parallel. Returns {title, byline, markdown, links[]}. Use this to read sources discovered via web_search.",
+    browserFetchSchema,
+    wrap("browserFetch", browserFetch)
   );
 
   server.tool("browser_eval",
