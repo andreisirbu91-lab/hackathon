@@ -2,10 +2,13 @@
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-// Horizontal neon tube fixed at the top of the viewport.
-// - Visible whether on or off (so it's clearly a physical fixture)
-// - When ON: bright neon coral with multi-layer halo + warm light wash below
-// - When OFF: tube is dark, page is heavily dimmed (brightness ~0.5)
+// Pendant neon mounted to the bottom of the top header bar.
+// - Two metal brackets pierce through the header and hold a horizontal tube
+//   right beneath it (so it reads as "attached to the bar", not floating).
+// - White-only LED light (no cyan tint). Tube remains visible when on
+//   thanks to a bright inner rim that out-bright-ens the surrounding halo.
+// - Page-wide brightness/saturation filter on the html element provides the
+//   "room dim" effect when off.
 export function Lamp({ on }: { on: boolean }) {
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -17,62 +20,81 @@ export function Lamp({ on }: { on: boolean }) {
 
   return (
     <>
-      {/* Two small mounting brackets, fixed at top, holding the tube */}
+      {/* Lamp assembly: brackets in the header band + tube below it.
+          Container starts at top:0 so the bracket origins look anchored INTO
+          the header bar. */}
       <div className="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2 z-40 w-[min(680px,72vw)]">
-        <div className="relative h-3">
-          <div className="absolute left-[18%] top-0 w-1.5 h-2.5 bg-gradient-to-b from-zinc-500 to-zinc-700 rounded-b-sm" />
-          <div className="absolute right-[18%] top-0 w-1.5 h-2.5 bg-gradient-to-b from-zinc-500 to-zinc-700 rounded-b-sm" />
+        {/* Reserved row matching the 48px header — brackets live inside it */}
+        <div className="relative h-12">
+          {/* Bracket: small mounting plate at the header bottom + a short bar
+              that drops down to the tube below */}
+          {[18, 82].map((pct) => (
+            <div
+              key={pct}
+              className="absolute"
+              style={{ left: `${pct}%`, top: "30px", transform: "translateX(-50%)" }}
+            >
+              {/* Mounting plate flush with the header bottom edge */}
+              <div className="w-3 h-1 bg-gradient-to-b from-zinc-500 to-zinc-700 rounded-sm shadow-soft" />
+              {/* Drop bar */}
+              <div className="mx-auto w-[2px] h-3.5 bg-gradient-to-b from-zinc-500 to-zinc-700" />
+              {/* Small clamp where it grips the tube */}
+              <div className="w-2.5 h-[3px] bg-gradient-to-b from-zinc-500 to-zinc-800 rounded-sm" />
+            </div>
+          ))}
         </div>
-        {/* Neon tube — white-hot core, cyan halo (classic LED look) */}
-        <div
-          className={cn(
-            "relative h-[7px] rounded-full mx-[10%] transition-all duration-500",
-            on ? "bg-white" : "bg-zinc-400/40"
-          )}
-          style={{
-            boxShadow: on
-              ? [
-                  // tight white inner shell
-                  "0 0 3px hsl(0 0% 100%)",
-                  "0 0 10px hsl(190 95% 90% / 0.95)",
-                  // cyan halos broadening outward
-                  "0 0 28px hsl(190 100% 65% / 0.85)",
-                  "0 0 70px hsl(190 100% 55% / 0.65)",
-                  "0 0 160px hsl(190 100% 50% / 0.35)",
-                  // downward bloom that lights the page
-                  "0 18px 120px hsl(190 100% 55% / 0.5)",
-                  // inner highlight so the tube reads as glass
-                  "inset 0 0 6px hsl(0 0% 100%)",
-                ].join(",")
-              : "inset 0 0 2px rgba(0,0,0,0.25)",
-          }}
-        />
+
+        {/* Neon tube — sits just under the header / brackets */}
+        <div className="relative mx-[10%] -mt-px">
+          <div
+            className={cn(
+              "relative h-[9px] rounded-full transition-all duration-500",
+              on ? "bg-white" : "bg-zinc-300/35"
+            )}
+            style={{
+              boxShadow: on
+                ? [
+                    // crisp visible rim — keeps the tube's silhouette readable
+                    "inset 0 0 0 1px rgba(255,255,255,1)",
+                    "inset 0 0 4px rgba(200,200,200,0.55)",
+                    // tight outer light
+                    "0 0 3px rgba(255,255,255,1)",
+                    "0 0 9px rgba(255,255,255,0.95)",
+                    "0 0 26px rgba(255,255,255,0.8)",
+                    "0 0 70px rgba(255,255,255,0.6)",
+                    "0 0 150px rgba(255,255,255,0.4)",
+                    // downward bloom that lights the page
+                    "0 18px 130px rgba(255,255,255,0.55)",
+                  ].join(",")
+                : "inset 0 0 0 1px rgba(120,120,120,0.3), inset 0 0 3px rgba(0,0,0,0.15)",
+              border: on ? "1px solid rgba(220,220,220,0.4)" : "1px solid rgba(160,160,160,0.25)",
+            }}
+          />
+        </div>
       </div>
 
-      {/* Light wash below the tube — broad cold-white spill */}
+      {/* Soft warm-white wash below the tube — actually lights the page */}
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none fixed inset-x-0 top-0 z-20 transition-opacity duration-700",
+          "pointer-events-none fixed inset-x-0 top-[58px] z-20 transition-opacity duration-700",
           on ? "opacity-100" : "opacity-0"
         )}
-        style={{ height: "100vh" }}
+        style={{ height: "85vh" }}
       >
-        {/* Hot white core right under the tube */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-0 w-[70vw] h-[45vh]"
+          className="absolute left-1/2 -translate-x-1/2 top-0 w-[75vw] h-[55vh]"
           style={{
             background:
-              "radial-gradient(ellipse 55% 100% at 50% 0%, hsl(0 0% 100% / 0.5), hsl(190 80% 90% / 0.2) 35%, transparent 75%)",
+              "radial-gradient(ellipse 55% 100% at 50% 0%, rgba(255,255,255,0.55), rgba(255,255,255,0.18) 35%, transparent 75%)",
             mixBlendMode: "screen",
           }}
         />
-        {/* Cyan ambient wash that fades down the page */}
         <div
           className="absolute inset-x-0 top-0 h-full"
           style={{
             background:
-              "radial-gradient(ellipse 90% 90% at 50% -10%, hsl(190 100% 60% / 0.32), hsl(190 100% 55% / 0.12) 35%, transparent 75%)",
+              "radial-gradient(ellipse 85% 80% at 50% -5%, rgba(255,255,255,0.32), rgba(255,255,255,0.1) 40%, transparent 75%)",
             mixBlendMode: "screen",
           }}
         />
